@@ -4,17 +4,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מחשבון שכר וניהול משמרות אינטראקטיבי</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            // שימוש בפורמט RGB עם תמיכה מלאה במקדם שקיפות (Alpha) עבור Tailwind
+                            50: 'rgb(var(--color-brand-50) / <alpha-value>)',
+                            100: 'rgb(var(--color-brand-100) / <alpha-value>)',
+                            200: 'rgb(var(--color-brand-200) / <alpha-value>)',
+                            500: 'rgb(var(--color-brand-500) / <alpha-value>)',
+                            600: 'rgb(var(--color-brand-600) / <alpha-value>)',
+                            700: 'rgb(var(--color-brand-700) / <alpha-value>)',
+                            900: 'rgb(var(--color-brand-900) / <alpha-value>)',
+                        },
+                        navy: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        /* CSS Variables for Dynamic Accent Colors based on Net Pay */
+        /* ערכי ברירת המחדל מוגדרים כערוצי RGB מופרדים ברווחים */
         :root {
-            --color-brand-50: #fff1f2;
-            --color-brand-100: #ffe4e6;
-            --color-brand-200: #fecdd3;
-            --color-brand-500: #f43f5e;
-            --color-brand-600: #e11d48;
-            --color-brand-700: #be123c;
-            --color-brand-900: #881337;
+            --color-brand-50: 255 241 242;
+            --color-brand-100: 255 228 230;
+            --color-brand-200: 254 205 211;
+            --color-brand-500: 244 63 94;
+            --color-brand-600: 225 29 72;
+            --color-brand-700: 190 18 60;
+            --color-brand-900: 136 19 55;
         }
 
         /* Custom scrollbar */
@@ -194,9 +225,6 @@
                 <div>
                     <span class="bg-brand-900/40 text-brand-100 text-xs font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider mb-2 inline-block transition-colors duration-300">מחשבון שכר וסימולטור משמרות</span>
                     <h2 class="text-2xl font-bold mb-2">ברוך הבא למחשבון השכר שלך!</h2>
-                    <p class="text-brand-100 text-sm max-w-2xl leading-relaxed transition-colors duration-300">
-                        מערכת זו מסנכרנת מנוע מסים ישראלי מתקדם המבוסס על שילוב תלושי השכר שלך לשנת 2026 (כולל התלוש הגבוה של 19,629 ש"ח). הזן משמרות ותעריפים כדי לראות את הנטו המדויק שלך בזמן אמת.
-                    </p>
                 </div>
                 <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10 text-center min-w-[160px]">
                     <div class="text-xs text-brand-200 transition-colors duration-300">תעריף שעתי מוגדר</div>
@@ -373,7 +401,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5" for="hourlyRate">תעריף שעתי (₪)</label>
-                            <input type="number" id="hourlyRate" step="0.01" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500" oninput="saveActiveProfileState(); calculatePayroll();">
+                            <input type="number" id="hourlyRate" step="0.01" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500" oninput="saveActiveProfileState(); calculatePayroll(); triggerThemeUpdateOnRateChange()">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5" for="creditPoints">נקודות זיכוי מס</label>
@@ -725,6 +753,8 @@
             dmiTipulRate: 0.75
         };
 
+        const DEFAULT_SHIFTS = [];
+
         // Global State variables
         let activeProfile = null;
         let profiles = [];
@@ -775,7 +805,7 @@
             outConvalescencePay: document.getElementById('outConvalescencePay'),
             outGrossTotal: document.getElementById('outGrossTotal'),
             outIncomeTax: document.getElementById('outIncomeTax'),
-            outNationalIns: document.getElementById('outNationalIns'),
+            outNationalIns.value: document.getElementById('outNationalIns'),
             outHealthIns: document.getElementById('outHealthIns'),
             outDmiTipul: document.getElementById('outDmiTipul'),
             outTaxesTotal: document.getElementById('outTaxesTotal'),
@@ -831,6 +861,31 @@
             if (slider && valSpan) {
                 valSpan.textContent = (parseFloat(slider.value) || 0).toFixed(2);
             }
+        }
+
+        // CUSTOM ALERT LOGIC
+        function showCustomAlert(title, message, isSuccess = true) {
+            const modal = document.getElementById('customAlertModal');
+            const iconContainer = document.getElementById('alertIconContainer');
+            const titleEl = document.getElementById('alertTitle');
+            const msgEl = document.getElementById('alertMessage');
+            
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+            
+            if (isSuccess) {
+                iconContainer.className = "mx-auto w-12 h-12 flex items-center justify-center rounded-full mb-4 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400";
+                iconContainer.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            } else {
+                iconContainer.className = "mx-auto w-12 h-12 flex items-center justify-center rounded-full mb-4 bg-rose-50 dark:bg-rose-955/30 text-rose-600 dark:text-rose-400";
+                iconContainer.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeCustomAlert() {
+            document.getElementById('customAlertModal').classList.add('hidden');
         }
 
         const API_BASE_URL = window.location.origin;
@@ -953,7 +1008,6 @@
             saveProfilesToCache();
         }
 
-        // Saves current page inputs and shift array into the active profile object
         async function saveActiveProfileState() {
             if (!activeProfile) return;
             
@@ -1022,7 +1076,6 @@
                 activeProfile = found;
                 shifts = found.shifts || [];
                 
-                // Sync values
                 elements.hourlyRate.value = found.hourlyRate || STUB_DEFAULTS.hourlyRate;
                 elements.creditPoints.value = found.creditPoints || STUB_DEFAULTS.creditPoints;
                 elements.travelFixed.value = found.travelFixed ?? STUB_DEFAULTS.travelFixed;
@@ -1068,7 +1121,6 @@
             }
         }
 
-        // Admin panel profile handling
         async function submitProfileForm() {
             const id = document.getElementById('editProfileId').value;
             const name = document.getElementById('admName').value.trim();
@@ -1561,18 +1613,23 @@
         function updateThemeAccent(netPay) {
             let scheme;
             if (netPay <= 6000) {
-                scheme = { '50': '#fff1f2', '100': '#ffe4e6', '200': '#fecdd3', '500': '#f43f5e', '600': '#e11d48', '700': '#be123c', '900': '#881337' };
+                scheme = { '50': '255 241 242', '100': '255 228 230', '200': '254 205 211', '500': '244 63 94', '600': '225 29 72', '700': '190 18 60', '900': '136 19 55' };
             } else if (netPay <= 8000) {
-                scheme = { '50': '#fff7ed', '100': '#ffedd5', '200': '#fed7aa', '500': '#f97316', '600': '#ea580c', '700': '#c2410c', '900': '#7c2d12' };
+                scheme = { '50': '255 247 237', '100': '255 237 213', '200': '254 215 170', '500': '249 115 22', '600': '234 88 12', '700': '194 65 12', '900': '124 45 18' };
             } else if (netPay <= 9500) {
-                scheme = { '50': '#f7fee7', '100': '#ecfccb', '200': '#d9f99d', '500': '#84cc16', '600': '#65a30d', '700': '#4d7c0f', '900': '#365314' };
+                scheme = { '50': '247 254 231', '100': '236 252 203', '200': '217 249 157', '500': '132 204 22', '600': '101 163 13', '700': '77 124 15', '900': '54 83 20' };
             } else {
-                scheme = { '50': '#f0fdf4', '100': '#dcfce7', '200': '#bbf7d0', '500': '#22c55e', '600': '#16a34a', '700': '#15803d', '900': '#14532d' };
+                scheme = { '50': '240 253 244', '100': '220 252 231', '200': '187 247 208', '500': '34 197 94', '600': '22 163 74', '700': '21 128 61', '900': '20 83 45' };
             }
 
             for (const [key, value] of Object.entries(scheme)) {
                 document.documentElement.style.setProperty(`--color-brand-${key}`, value);
             }
+        }
+
+        function triggerThemeUpdateOnRateChange() {
+            const hourlyRate = parseFloat(elements.hourlyRate.value) || 0;
+            updateThemeAccent(hourlyRate * 160); 
         }
 
         function calculatePayroll() {
@@ -1586,7 +1643,7 @@
             const foodAllowanceRate = parseFloat(elements.foodAllowance.value) || 0;
             const convalescenceUnits = parseFloat(elements.convalescenceUnits.value) || 0;
             const creditPoints = parseFloat(elements.creditPoints.value) || 0;
-            const hasKerenHishtalmut = document.getElementById('hasKerenHishtalmut').checked;
+            const hasKerenHishtalmut = elements.hasKerenHishtalmut.checked;
             const kerenHishtalmutRate = (parseFloat(elements.kerenHishtalmutRate.value) || 0) / 100;
             const pensionRate = (parseFloat(elements.pensionRate.value) || 0) / 100;
             const hasDmiTipul = elements.hasDmiTipul.checked;
@@ -1757,7 +1814,6 @@
             }
         }
 
-        // Initialize application on load
         window.onload = async function () {
             await fetchProfiles();
             
