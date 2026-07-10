@@ -82,7 +82,7 @@
 <body class="bg-slate-50 dark:bg-navy-950 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-300">
 
     <!-- Custom Notification Modal (No Browser Alerts!) -->
-    <div id="customAlertModal" class="fixed inset-0 z-55 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden no-print">
+    <div id="customAlertModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden no-print">
         <div class="bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl text-center">
             <div id="alertIconContainer" class="mx-auto w-12 h-12 flex items-center justify-center rounded-full mb-4">
                 <!-- Icon injected dynamically -->
@@ -94,7 +94,7 @@
     </div>
 
     <!-- PROFILE SELECTION & ADMIN OVERLAY (Loads before system) -->
-    <div id="profileOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 dark:bg-navy-950/80 backdrop-blur-md overflow-y-auto p-4 no-print">
+    <div id="profileOverlay" class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 dark:bg-navy-950/80 backdrop-blur-md overflow-y-auto p-4 no-print">
         <div class="bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-4xl w-full shadow-2xl p-6 sm:p-8 flex flex-col gap-6 max-h-[90vh] overflow-y-auto transition-all">
             
             <!-- Overlay Header -->
@@ -112,7 +112,7 @@
                 <div class="flex items-center gap-2">
                     <!-- Toggle Admin View Button -->
                     <button id="btnToggleAdmin" onclick="toggleAdminView()" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-800 dark:text-white px-4 py-2.5 rounded-xl font-bold transition-colors flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31c2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
                         <span id="btnAdminText">פאנל אדמין</span>
                     </button>
                     <!-- Close button (Only if active profile exists) -->
@@ -320,13 +320,18 @@
                             </button>
                         </div>
                     </div>
+                    
+                    <!-- Temp Custom Success Banner inside Card -->
+                    <div id="shiftSuccessAlert" class="hidden mt-3 p-3 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/30 rounded-xl text-xs text-indigo-700 dark:text-indigo-400 text-center animate-fade-in font-medium">
+                        שעות המשמרת הוזנו בהצלחה למחשבון וחישובי הנטו עודכנו! 🎉
+                    </div>
                 </div>
 
                 <!-- Shift Manager Card -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
                     <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
                         <div class="flex items-center gap-2 text-slate-900 dark:text-white">
-                            <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 text-brand-500 shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
                             <h3 class="font-bold text-base">ניהול משמרות חודשי</h3>
@@ -460,7 +465,7 @@
                         <div>
                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400" for="ot125Hours">שעות נוספות 125%: <span id="ot125HoursVal" class="text-slate-900 dark:text-white font-bold">0.00</span> שעות</label>
-                                <span class="text-[10px] bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">תוספת 25%</span>
+                                <span class="text-[10px] bg-amber-50 dark:bg-amber-955 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">תוספת 25%</span>
                             </div>
                             <input type="range" id="ot125Hours" min="0" max="80" step="0.25" disabled class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-not-allowed accent-brand-500" oninput="updateRangeText('ot125Hours'); calculatePayroll()">
                         </div>
@@ -469,7 +474,7 @@
                         <div>
                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400" for="ot150Hours">שעות נוספות 150%: <span id="ot150HoursVal" class="text-slate-900 dark:text-white font-bold">0.00</span> שעות</label>
-                                <span class="text-[10px] bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full">תוספת 50%</span>
+                                <span class="text-[10px] bg-red-50 dark:bg-red-955 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full">תוספת 50%</span>
                             </div>
                             <input type="range" id="ot150Hours" min="0" max="50" step="0.25" disabled class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-not-allowed accent-brand-500" oninput="updateRangeText('ot150Hours'); calculatePayroll()">
                         </div>
@@ -514,7 +519,7 @@
                 <!-- Custom Options & Social Fund Percentages Card -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
                     <div class="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">
-                        <svg class="w-5 h-5 text-brand-500 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <svg class="w-5 h-5 text-brand-500 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31c2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         <h3 class="font-bold text-base">הגדרות סוציאליות ומיסוי</h3>
                     </div>
                     <div class="space-y-4">
@@ -736,7 +741,7 @@
                 </div>
 
                 <!-- Employer Cost Card -->
-                <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-md transition-all">
+                <div class="bg-gradient-to-br from-slate-900 to-slate-850 text-white rounded-2xl p-6 shadow-md transition-all">
                     <div class="flex items-center gap-2 pb-4 mb-4 border-b border-white/10">
                         <svg class="w-5 h-5 text-brand-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         <h3 class="font-bold text-base">עלות מעסיק מלאה</h3>
@@ -780,40 +785,38 @@
 
     <!-- JavaScript Logic Section -->
     <script>
+        // Constants matching the generic defaults from pay stub
         const STUB_DEFAULTS = {
             hourlyRate: 54.97, 
             regularHours: 0,
             ot125Hours: 0,
             ot150Hours: 0,
             shabbatHours: 0,
-            travelFixed: 272.00,
-            travelDaily: 11.30,  
-            foodAllowance: 4.00, 
-            convalescenceUnits: 0.41, 
-            convalescenceRate: 511.60, 
+            travelFixed: 272.00, // global travel amount from stub
+            travelDaily: 11.30,  // daily travel unit from stub
+            foodAllowance: 4.00, // food allowance rate per hour from stub updates
+            convalescenceUnits: 0.41, // units from stub
+            convalescenceRate: 511.60, // rate from stub
             creditPoints: 2.25,
             hasKerenHishtalmut: true,
             kerenHishtalmutRate: 2.5,
-            pensionRate: 7.0, 
+            pensionRate: 7.0, // pension employee share
             hasDmiTipul: true,
             dmiTipulRate: 0.75
         };
 
+        // Standard empty simulation on first load (starting at 0 shifts)
         const DEFAULT_SHIFTS = [];
-
-        // Global State variables
-        let activeProfile = null;
-        let profiles = [];
-        let isServerOnline = false;
 
         // Shift Timer & Cumulative State
         let shiftRunning = false;
         let shiftPaused = false;
         let shiftStartTime = null;
-        let accumulatedTime = 0; 
+        let accumulatedTime = 0; // ms
         let timerInterval = null;
         let shifts = [];
         
+        // Calculated breakdown of the running shift
         let calculatedShift = {
             regular: 0,
             ot125: 0,
@@ -822,7 +825,7 @@
             earnings: 0
         };
 
-        // Cache elements
+        // DOM elements cache
         const elements = {
             hourlyRate: document.getElementById('hourlyRate'),
             regularHours: document.getElementById('regularHours'),
@@ -867,7 +870,7 @@
             outNationalInsEmployer: document.getElementById('outNationalInsEmployer'),
             outTotalEmployerCost: document.getElementById('outTotalEmployerCost'),
             
-            // visual progress
+            // visual progress elements
             barNet: document.getElementById('barNet'),
             barPension: document.getElementById('barPension'),
             barTaxes: document.getElementById('barTaxes'),
@@ -875,11 +878,13 @@
             pctPension: document.getElementById('pctPension'),
             pctTaxes: document.getElementById('pctTaxes'),
             
+            // comparison box
             comparisonBox: document.getElementById('comparisonBox'),
             compIcon: document.getElementById('compIcon'),
             compText: document.getElementById('compText'),
             compBadge: document.getElementById('compBadge'),
             
+            // shift elements
             timerIcon: document.getElementById('timerIcon'),
             shiftStatusBadge: document.getElementById('shiftStatusBadge'),
             shiftTimerDisplay: document.getElementById('shiftTimerDisplay'),
@@ -893,6 +898,41 @@
             btnApplyShift: document.getElementById('btnApplyShift'),
             shiftSuccessAlert: document.getElementById('shiftSuccessAlert')
         };
+
+        // Theme Toggle logic
+        const themeToggle = document.getElementById('themeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+
+        // Global State variables
+        let activeProfile = null;
+        let profiles = [];
+        let isServerOnline = false;
+
+        // Check user preferences or local storage
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            sunIcon.classList.remove('hidden');
+            moonIcon.classList.add('hidden');
+        } else {
+            document.documentElement.classList.remove('dark');
+            sunIcon.classList.add('hidden');
+            moonIcon.classList.remove('hidden');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('color-theme', 'light');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('color-theme', 'dark');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+        });
 
         // CUSTOM ALERT LOGIC
         function showCustomAlert(title, message, isSuccess = true) {
@@ -920,7 +960,7 @@
         }
 
         // SERVER API COMMUNICATION
-        const API_BASE_URL = window.location.origin; // Dynamically binds correctly to Render or Localhost
+        const API_BASE_URL = window.location.origin;
 
         async function fetchProfiles() {
             try {
@@ -942,7 +982,6 @@
             if (raw) {
                 profiles = JSON.parse(raw);
             } else {
-                // Set default offline backup profiles
                 profiles = [
                     {
                         id: "profile_june_2026",
@@ -1033,7 +1072,6 @@
             document.getElementById('profileAdminView').classList.add('hidden');
             document.getElementById('btnToggleAdmin').classList.remove('hidden');
             
-            // Show close button only if there is an active profile running
             const closeBtn = document.getElementById('btnCloseOverlay');
             if (activeProfile) {
                 closeBtn.classList.remove('hidden');
@@ -1072,10 +1110,8 @@
                 elements.hasDmiTipul.checked = found.hasDmiTipul;
                 elements.dmiTipulRate.value = found.dmiTipulRate;
                 
-                // Save current active profile ID to localStorage to remember on reload
                 localStorage.setItem('salary_calculator_active_profile_id', found.id);
                 
-                // Update views
                 document.getElementById('navActiveProfileName').textContent = `פרופיל פעיל: ${found.name}`;
                 updateMainSlidersFromShifts();
                 renderShifts();
@@ -1098,7 +1134,7 @@
                 viewAdmin.classList.remove('hidden');
                 title.textContent = "ניהול פרופילים ואדמין";
                 btnText.textContent = "חזרה לבחירה";
-                cancelFormEdit(); // Reset form state
+                cancelFormEdit(); 
             } else {
                 viewSelection.classList.remove('hidden');
                 viewAdmin.classList.add('hidden');
@@ -1152,10 +1188,10 @@
                     <td class="p-3 text-xs text-slate-700 dark:text-slate-300">${p.pensionRate}%</td>
                     <td class="p-3 text-xs text-slate-700 dark:text-slate-300">${p.hasKerenHishtalmut ? p.kerenHishtalmutRate + '%' : 'ללא'}</td>
                     <td class="p-3 text-center flex items-center justify-center gap-1.5 h-12">
-                        <button onclick="editProfileForm('${p.id}')" class="text-brand-600 hover:text-brand-700 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-850" title="ערוך הגדרות">
+                        <button onclick="event.stopPropagation(); editProfileForm('${p.id}')" class="text-brand-600 hover:text-brand-700 p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-850" title="ערוך הגדרות">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                         </button>
-                        <button onclick="deleteProfileConfirm('${p.id}')" class="text-rose-500 hover:text-rose-600 p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/20" title="מחק פרופיל">
+                        <button onclick="event.stopPropagation(); deleteProfileConfirm('${p.id}')" class="text-rose-500 hover:text-rose-600 p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/20" title="מחק פרופיל">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
                     </td>
@@ -1233,7 +1269,6 @@
             
             if (id) {
                 profileData.id = id;
-                // Preserve shifts when editing
                 const existing = profiles.find(p => p.id === id);
                 if (existing) {
                     profileData.shifts = existing.shifts || [];
@@ -1246,20 +1281,17 @@
             cancelFormEdit();
             showCustomAlert("הצלחה", "הפרופיל נשמר בהצלחה", true);
             
-            // If the updated profile is the active one, reload it to apply new settings
             if (activeProfile && activeProfile.id === id) {
                 selectProfile(id);
             }
         }
 
         async function deleteProfileConfirm(id) {
-            // Confirm using the personalized custom layout overlay instead of alert/confirm
             if (activeProfile && activeProfile.id === id) {
                 showCustomAlert("שגיאה", "לא ניתן למחוק פרופיל פעיל כרגע. אנא החלף פרופיל תחילה.", false);
                 return;
             }
             
-            // Custom simplified logic: direct deletion with easy undo instructions or notification modal
             await apiDeleteProfile(id);
             showCustomAlert("הצלחה", "הפרופיל נמחק בהצלחה מהמערכת", true);
         }
@@ -1281,170 +1313,7 @@
             activeProfile.hasDmiTipul = elements.hasDmiTipul.checked;
             activeProfile.dmiTipulRate = parseFloat(elements.dmiTipulRate.value) || 0;
             
-            // Sync current active profile state back to backend db or localStorage
             await createOrUpdateProfile(activeProfile);
-        }
-
-        // TIMER ACTIONS & ACCUMULATOR
-        function toggleShiftTimer() {
-            elements.shiftSuccessAlert.classList.add('hidden');
-            
-            if (!shiftRunning) {
-                shiftRunning = true;
-                shiftPaused = false;
-                
-                elements.shiftStatusBadge.textContent = "פעיל";
-                elements.shiftStatusBadge.className = "text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2.5 py-1 rounded-full font-bold animate-pulse";
-                elements.timerIcon.classList.add('text-brand-500', 'animate-pulse');
-                
-                elements.btnStartText.textContent = "סיים משמרת";
-                elements.btnStartShift.className = "flex-1 text-sm bg-rose-600 hover:bg-rose-700 text-white px-3 py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm";
-                
-                elements.btnPauseShift.disabled = false;
-                elements.btnPauseShift.className = "flex-1 text-sm bg-amber-500 hover:bg-amber-600 text-white px-3 py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer";
-                elements.btnPauseText.textContent = "השהה";
-                
-                elements.btnApplyShift.disabled = true;
-                elements.btnApplyShift.className = "w-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 px-3 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 cursor-not-allowed border border-dashed border-slate-200 dark:border-slate-700";
-
-                shiftStartTime = Date.now() - accumulatedTime;
-                timerInterval = setInterval(updateShiftTimerDisplays, 100);
-            } else {
-                shiftRunning = false;
-                clearInterval(timerInterval);
-                accumulatedTime = Date.now() - shiftStartTime;
-
-                elements.shiftStatusBadge.textContent = "הסתיימה";
-                elements.shiftStatusBadge.className = "text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 px-2.5 py-1 rounded-full font-bold";
-                elements.timerIcon.classList.remove('text-brand-500', 'animate-pulse');
-                
-                elements.btnStartText.textContent = "התחל חדשה";
-                elements.btnStartShift.className = "flex-1 text-sm bg-brand-600 hover:bg-brand-700 text-white px-3 py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm";
-                
-                elements.btnPauseShift.disabled = true;
-                elements.btnPauseShift.className = "flex-1 text-sm bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 px-3 py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-not-allowed";
-                elements.btnPauseText.textContent = "השהה";
-
-                if (calculatedShift.totalHours > 0) {
-                    elements.btnApplyShift.disabled = false;
-                    elements.btnApplyShift.className = "w-full text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md";
-                }
-            }
-        }
-
-        function pauseShiftTimer() {
-            if (!shiftRunning) return;
-
-            if (!shiftPaused) {
-                shiftPaused = true;
-                clearInterval(timerInterval);
-                accumulatedTime = Date.now() - shiftStartTime;
-                
-                elements.shiftStatusBadge.textContent = "מושהה";
-                elements.shiftStatusBadge.className = "text-xs bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2.5 py-1 rounded-full font-bold";
-                elements.btnPauseText.textContent = "המשך";
-                elements.timerIcon.classList.remove('animate-pulse');
-            } else {
-                shiftPaused = false;
-                shiftStartTime = Date.now() - accumulatedTime;
-                
-                elements.shiftStatusBadge.textContent = "פעיל";
-                elements.shiftStatusBadge.className = "text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2.5 py-1 rounded-full font-bold animate-pulse";
-                elements.btnPauseText.textContent = "השהה";
-                elements.timerIcon.classList.add('animate-pulse');
-                
-                timerInterval = setInterval(updateShiftTimerDisplays, 100);
-            }
-        }
-
-        function updateShiftTimerDisplays() {
-            let totalMs = accumulatedTime;
-            if (shiftRunning && !shiftPaused) {
-                totalMs = Date.now() - shiftStartTime;
-            }
-
-            const totalSecs = Math.floor(totalMs / 1000);
-            const hours = Math.floor(totalSecs / 3600);
-            const mins = Math.floor((totalSecs % 3600) / 60);
-            const secs = totalSecs % 60;
-
-            const hStr = String(hours).padStart(2, '0');
-            const mStr = String(mins).padStart(2, '0');
-            const sStr = String(secs).padStart(2, '0');
-            elements.shiftTimerDisplay.textContent = `${hStr}:${mStr}:${sStr}`;
-
-            const decHours = totalSecs / 3600;
-            const hourlyRate = parseFloat(elements.hourlyRate.value) || 0;
-
-            const regHours = Math.min(decHours, 8);
-            const ot125Hours = Math.min(Math.max(decHours - 8, 0), 2);
-            const ot150Hours = Math.max(decHours - 10, 0);
-
-            const totalEarnings = (regHours * hourlyRate) + 
-                                  (ot125Hours * hourlyRate * 1.25) + 
-                                  (ot150Hours * hourlyRate * 1.50);
-
-            calculatedShift = {
-                regular: regHours,
-                ot125: ot125Hours,
-                ot150: ot150Hours,
-                totalHours: decHours,
-                earnings: totalEarnings
-            };
-
-            elements.shiftEarningsDisplay.textContent = formatILS(totalEarnings);
-            
-            if (decHours > 0) {
-                elements.shiftSummaryText.classList.remove('hidden');
-                elements.shiftSummaryText.innerHTML = `שעות שנצברו: <span class="font-bold text-slate-800 dark:text-white">${decHours.toFixed(2)}</span> ש' (רגילות: ${regHours.toFixed(2)}, 125%: ${ot125Hours.toFixed(2)}, 150%: ${ot150Hours.toFixed(2)})`;
-            } else {
-                elements.shiftSummaryText.classList.add('hidden');
-            }
-        }
-
-        function applyShiftToCalculator() {
-            if (calculatedShift.totalHours <= 0) return;
-
-            const today = new Date().toISOString().split('T')[0];
-            const timerType = document.getElementById('timerShiftType').value;
-            const newShift = {
-                id: 'shift_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-                date: today,
-                hours: parseFloat(calculatedShift.totalHours.toFixed(2)),
-                isShabbat: false,
-                type: timerType
-            };
-
-            shifts.push(newShift);
-            saveActiveProfileState();
-            updateMainSlidersFromShifts();
-            calculatePayroll();
-            renderShifts();
-
-            // Clear Shift Timer State
-            shiftRunning = false;
-            shiftPaused = false;
-            accumulatedTime = 0;
-            shiftStartTime = null;
-            clearInterval(timerInterval);
-
-            elements.shiftTimerDisplay.textContent = "00:00:00";
-            elements.shiftEarningsDisplay.textContent = "₪0.00";
-            elements.shiftStatusBadge.textContent = "לא פעיל";
-            elements.shiftStatusBadge.className = "text-xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 px-2.5 py-1 rounded-full font-bold";
-            elements.btnStartText.textContent = "התחל משמרת";
-            elements.btnStartShift.className = "flex-1 text-sm bg-brand-600 hover:bg-brand-700 text-white px-3 py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm";
-            elements.btnPauseShift.disabled = true;
-            elements.btnPauseShift.className = "flex-1 text-sm bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 px-3 py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-not-allowed";
-            elements.btnPauseText.textContent = "השהה";
-            elements.btnApplyShift.disabled = true;
-            elements.btnApplyShift.className = "w-full text-xs bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 px-3 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center gap-1.5 cursor-not-allowed border border-dashed border-slate-200 dark:border-slate-700";
-            elements.shiftSummaryText.classList.add('hidden');
-
-            elements.shiftSuccessAlert.classList.remove('hidden');
-            setTimeout(() => {
-                elements.shiftSuccessAlert.classList.add('hidden');
-            }, 6000);
         }
 
         // Add predefined shift for today with rapid click
@@ -1501,7 +1370,106 @@
             isShabbatInput.checked = false;
         }
 
-        // Update Range Labels
+        // Delete a specific shift
+        function deleteShift(id) {
+            shifts = shifts.filter(s => s.id !== id);
+            saveActiveProfileState();
+            updateMainSlidersFromShifts();
+            calculatePayroll();
+            renderShifts();
+        }
+
+        // Clear all logged shifts
+        function clearAllShifts() {
+            shifts = [];
+            saveActiveProfileState();
+            updateMainSlidersFromShifts();
+            calculatePayroll();
+            renderShifts();
+        }
+
+        // Inline shift editor inside table
+        function updateShiftField(id, field, value) {
+            const shift = shifts.find(s => s.id === id);
+            if (shift) {
+                if (field === 'hours') {
+                    shift.hours = parseFloat(value) || 0;
+                } else if (field === 'date') {
+                    shift.date = value;
+                } else if (field === 'isShabbat') {
+                    shift.isShabbat = value;
+                } else if (field === 'type') {
+                    shift.type = value;
+                }
+                saveActiveProfileState();
+                updateMainSlidersFromShifts();
+                calculatePayroll();
+            }
+        }
+
+        // Redraw table of all monthly shifts with clean dark mode inputs and options style
+        function renderShifts() {
+            const tbody = document.getElementById('shiftsTableBody');
+            const noShifts = document.getElementById('noShiftsMessage');
+            
+            tbody.innerHTML = '';
+            
+            if (shifts.length === 0) {
+                noShifts.classList.remove('hidden');
+            } else {
+                noShifts.classList.add('hidden');
+                
+                shifts.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                shifts.forEach(s => {
+                    const hours = parseFloat(s.hours) || 0;
+                    let desc = '';
+                    if (s.isShabbat) {
+                        desc = `<span class="text-indigo-600 dark:text-indigo-400 font-bold">שבת: ${hours.toFixed(2)} ש' (150%)</span>`;
+                    } else {
+                        const r = Math.min(hours, 8).toFixed(2);
+                        const ot125 = Math.min(Math.max(hours - 8, 0), 2).toFixed(2);
+                        const ot150 = Math.max(hours - 10, 0).toFixed(2);
+                        desc = `<span class="text-slate-500 dark:text-slate-400 text-[11px]">רגיל: ${r} | 125%: ${ot125} | 150%: ${ot150}</span>`;
+                    }
+                    
+                    const row = document.createElement('tr');
+                    row.className = "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-800/50";
+                    row.innerHTML = `
+                        <td class="p-2">
+                            <input type="date" value="${s.date}" onchange="updateShiftField('${s.id}', 'date', this.value); renderShifts()" class="bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 border border-transparent hover:border-slate-300 dark:hover:border-slate-700 focus:border-brand-500 dark:focus:border-brand-500 rounded px-1.5 py-1 text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-none dark:[color-scheme:dark]">
+                        </td>
+                        <td class="p-2">
+                            <select onchange="updateShiftField('${s.id}', 'type', this.value); renderShifts()" class="bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 border border-transparent hover:border-slate-300 dark:hover:border-slate-700 focus:border-brand-500 rounded px-1 py-0.5 text-xs text-slate-800 dark:text-slate-200 font-medium focus:outline-none">
+                                <option value="morning" ${s.type === 'morning' ? 'selected' : ''} class="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">בוקר</option>
+                                <option value="noon" ${s.type === 'noon' ? 'selected' : ''} class="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">צהריים</option>
+                                <option value="night" ${s.type === 'night' ? 'selected' : ''} class="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">לילה</option>
+                                <option value="custom" ${s.type === 'custom' || !s.type ? 'selected' : ''} class="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">אחר/מותאם</option>
+                            </select>
+                        </td>
+                        <td class="p-2">
+                            <input type="number" step="0.25" value="${hours}" oninput="updateShiftField('${s.id}', 'hours', this.value)" onchange="renderShifts()" class="w-16 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 border border-transparent hover:border-slate-300 dark:hover:border-slate-700 focus:border-brand-500 dark:focus:border-brand-500 rounded px-1.5 py-1 text-xs text-slate-800 dark:text-slate-200 font-bold focus:outline-none">
+                        </td>
+                        <td class="p-2">
+                            <input type="checkbox" ${s.isShabbat ? 'checked' : ''} onchange="updateShiftField('${s.id}', 'isShabbat', this.checked); renderShifts()" class="w-4 h-4 rounded text-brand-600 focus:ring-brand-500 bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700">
+                        </td>
+                        <td class="p-2 font-medium">
+                            ${desc}
+                        </td>
+                        <td class="p-2 text-center">
+                            <button onclick="deleteShift('${s.id}')" class="text-rose-500 hover:text-rose-600 p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all" title="מחק משמרת">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+            
+            document.getElementById('shiftCountText').textContent = shifts.length;
+        }
+
+        // Reevaluate sum total of all monthly shifts and populate the main inputs & sliders
         function updateMainSlidersFromShifts() {
             let regSum = 0;
             let ot125Sum = 0;
@@ -1765,10 +1733,8 @@
 
         // Initialize application on load
         window.onload = async function () {
-            // Load profiles first
             await fetchProfiles();
             
-            // Check if there is a remembered active profile id
             const rememberedId = localStorage.getItem('salary_calculator_active_profile_id');
             if (rememberedId && profiles.some(p => p.id === rememberedId)) {
                 selectProfile(rememberedId);
