@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מחשבון שכר וניהול משמרות אינטראקטיבי</title>
+    <!-- Tailwind CSS CDN v3.x -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -12,7 +13,6 @@
                 extend: {
                     colors: {
                         brand: {
-                            // שימוש בפורמט RGB עם תמיכה מלאה במקדם שקיפות (Alpha) עבור Tailwind
                             50: 'rgb(var(--color-brand-50) / <alpha-value>)',
                             100: 'rgb(var(--color-brand-100) / <alpha-value>)',
                             200: 'rgb(var(--color-brand-200) / <alpha-value>)',
@@ -37,7 +37,7 @@
         }
     </script>
     <style>
-        /* ערכי ברירת המחדל מוגדרים כערוצי RGB מופרדים ברווחים */
+        /* הגדרת משתני הבסיס כערוצי צבע מופרדים ברווחים עבור תמיכה בשקיפות ב-Tailwind */
         :root {
             --color-brand-50: 255 241 242;
             --color-brand-100: 255 228 230;
@@ -81,19 +81,23 @@
 </head>
 <body class="bg-slate-50 dark:bg-navy-950 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-300">
 
+    <!-- Custom Notification Modal (No Browser Alerts!) -->
     <div id="customAlertModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden no-print">
         <div class="bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl text-center">
             <div id="alertIconContainer" class="mx-auto w-12 h-12 flex items-center justify-center rounded-full mb-4">
-                </div>
+                <!-- Icon injected dynamically -->
+            </div>
             <h3 id="alertTitle" class="text-base font-bold text-slate-900 dark:text-white mb-2"></h3>
             <p id="alertMessage" class="text-sm text-slate-500 dark:text-slate-400 mb-6"></p>
             <button onclick="closeCustomAlert()" class="w-full py-2.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-850 text-white rounded-xl font-bold transition-colors text-xs">הבנתי, תודה</button>
         </div>
     </div>
 
+    <!-- PROFILE SELECTION & ADMIN OVERLAY (Loads before system) -->
     <div id="profileOverlay" class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 dark:bg-navy-950/80 backdrop-blur-md overflow-y-auto p-4 no-print">
         <div class="bg-white dark:bg-navy-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-4xl w-full shadow-2xl p-6 sm:p-8 flex flex-col gap-6 max-h-[90vh] overflow-y-auto transition-all">
             
+            <!-- Overlay Header -->
             <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div class="flex items-center gap-3">
                     <div class="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-700 dark:text-slate-300">
@@ -106,27 +110,33 @@
                 </div>
                 
                 <div class="flex items-center gap-2">
+                    <!-- Toggle Admin View Button -->
                     <button id="btnToggleAdmin" onclick="toggleAdminView()" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-800 dark:text-white px-4 py-2.5 rounded-xl font-bold transition-colors flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31c2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
                         <span id="btnAdminText">פאנל אדמין</span>
                     </button>
+                    <!-- Close button (Only if active profile exists) -->
                     <button id="btnCloseOverlay" onclick="closeOverlay()" class="hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
             </div>
 
+            <!-- Profile List Container -->
             <div id="profileSelectionView" class="space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="profilesGrid">
-                    </div>
+                    <!-- Dynamic Profiles Cards injected here -->
+                </div>
                 
                 <div id="loadingProfilesMessage" class="py-12 text-center text-slate-500 dark:text-slate-400 text-sm font-semibold">
                     טוען פרופילים מהשרת...
                 </div>
             </div>
 
+            <!-- Admin Panel View -->
             <div id="profileAdminView" class="hidden space-y-6">
                 
+                <!-- Create/Edit Profile Form -->
                 <div class="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5">
                     <h3 class="font-extrabold text-sm text-slate-900 dark:text-white mb-4 flex items-center gap-1.5" id="formActionTitle">
                         <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
@@ -190,6 +200,7 @@
                     </div>
                 </div>
 
+                <!-- Profile Management Grid -->
                 <div class="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
                     <table class="w-full text-xs text-right">
                         <thead class="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 uppercase sticky top-0 z-10">
@@ -202,13 +213,15 @@
                             </tr>
                         </thead>
                         <tbody id="adminProfilesTable" class="divide-y divide-slate-100 dark:divide-slate-800/60">
-                            </tbody>
+                            <!-- Injected dynamically -->
+                        </tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Main Navigation Bar -->
     <nav class="bg-white dark:bg-navy-900 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300 no-print">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between text-xs">
             <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400">
@@ -218,7 +231,9 @@
         </div>
     </nav>
 
+    <!-- Main Application Page -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Interactive Information Banner -->
         <div class="no-print bg-gradient-to-r from-brand-600 to-slate-900 text-white rounded-2xl p-6 mb-8 shadow-lg relative overflow-hidden transition-all duration-550">
             <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/10 to-transparent"></div>
             <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -236,8 +251,10 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 print-full-width">
             
+            <!-- Left Side: Inputs Form (Column span 7 on desktop) -->
             <section class="lg:col-span-7 space-y-6 no-print">
 
+                <!-- Shift Timer Card -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-all relative overflow-hidden">
                     <div class="absolute top-0 right-0 left-0 h-1 bg-gradient-to-r from-brand-500 to-indigo-500 transition-colors duration-300"></div>
                     
@@ -252,16 +269,19 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                        <!-- Clock & Money Displays -->
                         <div class="md:col-span-7 space-y-2">
                             <div class="flex items-baseline gap-3">
                                 <span id="shiftTimerDisplay" class="text-4xl font-mono font-black tracking-wider text-slate-800 dark:text-white">00:00:00</span>
                                 <span id="shiftEarningsDisplay" class="text-xl font-bold text-brand-600 dark:text-brand-500 transition-colors duration-300">₪0.00</span>
                             </div>
+                            <!-- Breakdown Details -->
                             <div class="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
                                 <p id="shiftBreakdownDisplay">8 שעות ראשונות ב-100%, שעתיים ב-125%, ומעבר לכך ב-150%.</p>
                                 <p id="shiftSummaryText" class="hidden text-brand-600 dark:text-brand-400 font-medium mt-1 transition-colors duration-300"></p>
                             </div>
                             
+                            <!-- Select Shift Type for Timer -->
                             <div class="flex items-center gap-2 pt-2">
                                 <label class="text-xs font-semibold text-slate-500 dark:text-slate-400" for="timerShiftType">סוג משמרת בטיימר:</label>
                                 <select id="timerShiftType" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg px-2.5 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-500">
@@ -273,6 +293,7 @@
                             </div>
                         </div>
 
+                        <!-- Action Buttons -->
                         <div class="md:col-span-5 flex flex-col sm:flex-row md:flex-col gap-2">
                             <div class="flex gap-2 w-full">
                                 <button id="btnStartShift" onclick="toggleShiftTimer()" class="flex-1 text-sm bg-brand-600 hover:bg-brand-700 text-white px-3 py-2.5 rounded-xl font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm">
@@ -297,11 +318,13 @@
                         </div>
                     </div>
                     
+                    <!-- Temp Custom Success Banner inside Card -->
                     <div id="shiftSuccessAlert" class="hidden mt-3 p-3 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/30 rounded-xl text-xs text-indigo-700 dark:text-indigo-400 text-center animate-fade-in font-medium">
                         שעות המשמרת הוזנו בהצלחה למחשבון וחישובי הנטו עודכנו! 🎉
                     </div>
                 </div>
 
+                <!-- Shift Manager Card -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
                     <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
                         <div class="flex items-center gap-2 text-slate-900 dark:text-white">
@@ -313,6 +336,7 @@
                         <span class="text-xs bg-brand-100 text-brand-800 dark:bg-brand-900/35 dark:text-brand-300 px-2.5 py-1 rounded-full font-bold transition-colors duration-300">שמירה אוטומטית בקאש</span>
                     </div>
 
+                    <!-- Quick Add Buttons -->
                     <div class="mb-6">
                         <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">הוספה מהירה (עבור התאריך של היום - 8.5 שעות):</label>
                         <div class="grid grid-cols-3 gap-3">
@@ -334,6 +358,7 @@
                         </div>
                     </div>
 
+                    <!-- Add Custom Shift Form -->
                     <div class="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 mb-6 border border-slate-100 dark:border-slate-800">
                         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
                             <div>
@@ -364,6 +389,7 @@
                         </button>
                     </div>
 
+                    <!-- Shifts List / Table -->
                     <div class="overflow-x-auto max-h-[600px] overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-xl transition-all">
                         <table class="w-full text-xs text-right">
                             <thead class="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 uppercase sticky top-0 z-10">
@@ -377,13 +403,15 @@
                                 </tr>
                             </thead>
                             <tbody id="shiftsTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60">
-                                </tbody>
+                                <!-- Dynamic Rows -->
+                            </tbody>
                         </table>
                         <div id="noShiftsMessage" class="p-12 text-center text-slate-400 dark:text-slate-500 text-xs hidden">
                             טרם הוספת משמרות החודש. השתמש בלחצני ההוספה המהירה למעלה או הזן משמרת ידנית!
                         </div>
                     </div>
 
+                    <!-- Shift Stats Summary -->
                     <div class="mt-4 flex justify-between items-center text-xs p-3.5 bg-brand-50 dark:bg-brand-950/20 rounded-xl border border-brand-100/50 dark:border-brand-900/20 transition-colors duration-300">
                         <span class="font-medium text-slate-600 dark:text-slate-400">סה"כ משמרות שנרשמו החודש: <span id="shiftCountText" class="font-bold text-slate-900 dark:text-white">0</span></span>
                         <button onclick="clearAllShifts()" class="text-[11px] text-red-500 hover:text-red-600 font-bold flex items-center gap-1">
@@ -393,6 +421,7 @@
                     </div>
                 </div>
                 
+                <!-- Base Data and Rates Card -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
                     <div class="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">
                         <svg class="w-5 h-5 text-brand-500 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -410,6 +439,7 @@
                     </div>
                 </div>
 
+                <!-- Hours Breakdown Card -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-all opacity-90 relative">
                     <div class="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">
                         <svg class="w-5 h-5 text-brand-500 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -419,6 +449,7 @@
                         </div>
                     </div>
                     <div class="space-y-4">
+                        <!-- Regular Hours -->
                         <div>
                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400" for="regularHours">שעות רגילות (100%): <span id="regularHoursVal" class="text-slate-900 dark:text-white font-bold">0.00</span> שעות</label>
@@ -427,6 +458,7 @@
                             <input type="range" id="regularHours" min="0" max="220" step="0.25" disabled class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-not-allowed accent-brand-500" oninput="updateRangeText('regularHours'); calculatePayroll()">
                         </div>
 
+                        <!-- 125% Overtime -->
                         <div>
                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400" for="ot125Hours">שעות נוספות 125%: <span id="ot125HoursVal" class="text-slate-900 dark:text-white font-bold">0.00</span> שעות</label>
@@ -435,6 +467,7 @@
                             <input type="range" id="ot125Hours" min="0" max="80" step="0.25" disabled class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-not-allowed accent-brand-500" oninput="updateRangeText('ot125Hours'); calculatePayroll()">
                         </div>
 
+                        <!-- 150% Overtime -->
                         <div>
                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400" for="ot150Hours">שעות נוספות 150%: <span id="ot150HoursVal" class="text-slate-900 dark:text-white font-bold">0.00</span> שעות</label>
@@ -443,6 +476,7 @@
                             <input type="range" id="ot150Hours" min="0" max="50" step="0.25" disabled class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-not-allowed accent-brand-500" oninput="updateRangeText('ot150Hours'); calculatePayroll()">
                         </div>
 
+                        <!-- Shabbat Hours -->
                         <div>
                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400" for="shabbatHours">שעות שבת 150%: <span id="shabbatHoursVal" class="text-slate-900 dark:text-white font-bold">0.00</span> שעות</label>
@@ -453,6 +487,7 @@
                     </div>
                 </div>
 
+                <!-- Extras & Fixed Components Card -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
                     <div class="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">
                         <svg class="w-5 h-5 text-brand-500 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -478,6 +513,7 @@
                     </div>
                 </div>
 
+                <!-- Custom Options & Social Fund Percentages Card -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
                     <div class="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">
                         <svg class="w-5 h-5 text-brand-500 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31c2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
@@ -523,14 +559,17 @@
 
             </section>
 
+            <!-- Right Side: Results & Dashboard Analytics -->
             <section class="lg:col-span-5 space-y-6 print-full-width">
                 
+                <!-- Main KPI Card (Net Pay / Gross) -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl p-6 shadow-md border-t-4 border-brand-500 dark:border-brand-600 transition-all duration-550 text-center relative overflow-hidden">
                     
                     <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">שכר נטו סופי לתשלום</span>
                     <div class="text-5xl font-black text-brand-600 dark:text-brand-500 tracking-tight my-2 transition-colors duration-300" id="netResult">₪0.00</div>
                     <p class="text-xs text-slate-500 dark:text-slate-400">סך הברוטו: <span id="grossSummary" class="font-bold">₪0.00</span></p>
 
+                    <!-- Custom Visual Progress Bar showing Breakdown -->
                     <div class="mt-6 space-y-2">
                         <div class="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
                             <div id="barNet" class="bg-brand-500 h-full transition-all duration-500" style="width: 100%"></div>
@@ -545,11 +584,13 @@
                     </div>
                 </div>
 
+                <!-- Pay Target Comparison -->
                 <div id="comparisonBox" class="bg-white dark:bg-navy-900 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 transition-all no-print">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div id="compIcon" class="p-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
                             </div>
                             <div>
                                 <div class="text-xs text-slate-400 dark:text-slate-500">מצב סימולטור שכר</div>
@@ -560,6 +601,7 @@
                     </div>
                 </div>
 
+                <!-- Interactive Israeli Tax Steps breakdown -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
                     <div class="flex items-center gap-2 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white">
                         <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"></path></svg>
@@ -602,6 +644,7 @@
                     </div>
                 </div>
 
+                <!-- Detailed Calculations Accordion / View -->
                 <div class="bg-white dark:bg-navy-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-all overflow-hidden">
                     <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center text-slate-900 dark:text-white">
                         <h3 class="font-bold text-base flex items-center gap-2">
@@ -613,6 +656,7 @@
                     
                     <div class="divide-y divide-slate-100 dark:divide-slate-800/60 text-sm">
                         
+                        <!-- Earnings list -->
                         <div class="p-5 space-y-3">
                             <div class="text-xs font-bold text-brand-600 dark:text-brand-500 uppercase transition-colors duration-300">תקבולים (ברוטו)</div>
                             <div class="flex justify-between text-slate-600 dark:text-slate-400">
@@ -649,6 +693,7 @@
                             </div>
                         </div>
 
+                        <!-- Deductions list -->
                         <div class="p-5 space-y-3">
                             <div class="text-xs font-bold text-rose-500 uppercase">ניכויי חובה ומיסוי</div>
                             <div class="flex justify-between text-slate-600 dark:text-slate-400">
@@ -673,6 +718,7 @@
                             </div>
                         </div>
 
+                        <!-- Pension Savings list -->
                         <div class="p-5 space-y-3">
                             <div class="text-xs font-bold text-indigo-500 uppercase">הפרשות לקופות (על חשבון העובד)</div>
                             <div class="flex justify-between text-slate-600 dark:text-slate-400">
@@ -692,6 +738,7 @@
                     </div>
                 </div>
 
+                <!-- Employer Cost Card -->
                 <div class="bg-gradient-to-br from-slate-900 to-slate-850 text-white rounded-2xl p-6 shadow-md transition-all">
                     <div class="flex items-center gap-2 pb-4 mb-4 border-b border-white/10">
                         <svg class="w-5 h-5 text-brand-400 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -726,6 +773,7 @@
         </div>
     </main>
 
+    <!-- Footer Information block -->
     <footer class="bg-white dark:bg-navy-900 border-t border-slate-200 dark:border-slate-800 py-8 mt-12 transition-colors duration-300 no-print">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-400 dark:text-slate-500">
             <p>המחשבון מיועד לסימולציה וניהול עצמאי של משמרות ושכר חודשי.</p>
@@ -733,6 +781,7 @@
         </div>
     </footer>
 
+    <!-- JavaScript Logic Section -->
     <script>
         const STUB_DEFAULTS = {
             hourlyRate: 54.97, 
@@ -752,8 +801,6 @@
             hasDmiTipul: true,
             dmiTipulRate: 0.75
         };
-
-        const DEFAULT_SHIFTS = [];
 
         // Global State variables
         let activeProfile = null;
@@ -805,7 +852,7 @@
             outConvalescencePay: document.getElementById('outConvalescencePay'),
             outGrossTotal: document.getElementById('outGrossTotal'),
             outIncomeTax: document.getElementById('outIncomeTax'),
-            outNationalIns.value: document.getElementById('outNationalIns'),
+            outNationalIns: document.getElementById('outNationalIns'),
             outHealthIns: document.getElementById('outHealthIns'),
             outDmiTipul: document.getElementById('outDmiTipul'),
             outTaxesTotal: document.getElementById('outTaxesTotal'),
@@ -1111,13 +1158,13 @@
                 viewSelection.classList.add('hidden');
                 viewAdmin.classList.remove('hidden');
                 title.textContent = "ניהול פרופילים ואדמין";
-                btnText.textContent = "חזרה לבחירה";
+                if (btnText) btnText.textContent = "חזרה לבחירה";
                 cancelFormEdit(); 
             } else {
                 viewSelection.classList.remove('hidden');
                 viewAdmin.classList.add('hidden');
                 title.textContent = "בחר פרופיל עבודה";
-                btnText.textContent = "פאנל אדמין";
+                if (btnText) btnText.textContent = "פאנל אדמין";
             }
         }
 
@@ -1814,6 +1861,7 @@
             }
         }
 
+        // Initialize application on load
         window.onload = async function () {
             await fetchProfiles();
             
