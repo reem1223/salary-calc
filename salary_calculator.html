@@ -1,17 +1,8 @@
-שלום! כמעצב ומפתח תוכנה, עברתי על הקוד של השרת ושל ה-Frontend בקובץ `salary_calculator.html`. הקוד בנוי בצורה יפה מאוד, אך מצאתי מספר באגים קריטיים בצד הלקוח (Frontend) שמונעים מהמערכת לעבוד בצורה תקינה, לסנכרן נתונים מול השרת או לשמור פרופילים חדשים.
+הנה קובץ ה-HTML המלא והמתוקן (`salary_calculator.html`).
 
-להלן פירוט הבעיות המרכזיות שמצאתי ותיקנתי:
+בגרסה זו החלפתי את ה-CDN של Tailwind לגרסה יציבה ואוטונומית (`@tailwindcss/browser`) שמפעילה את עצמה ישירות על הדפדפן ללא תלות באובייקטים חיצוניים, והסרתי את הבלוק הישן של `tailwind.config` שהיה עלול לגרום לקריסה וחסימת האלמנטים במקרה ששרת ה-CDN המקורי לא נגיש.
 
-1. **משתנים ופונקציות חסרים בטופס הניהול (אדמין):** הפונקציות `submitProfileForm`, `cancelFormEdit`, `editProfileForm`, ו-`deleteProfileConfirm` נקראות מה-HTML אך לא היו קיימות בכלל בתוך ה-`<script>`. זה גרם לשגיאות `Uncaught ReferenceError`.
-2. **פונקציית שמירת מצב הפרופיל (`saveActiveProfileState`):** פונקציה זו נקראת בכל שינוי של קלט (כמו עדכון תעריף שעתי, שינוי שעות או הוספת משמרת), אך היא לא הייתה קיימת. יצרתי אותה כך שתעדכן את רשימת המשמרות והערכים הנוכחיים גם במערך הכללי `profiles` וגם תבצע שמירה (לשרת או ל-LocalStorage).
-3. **פונקציות עזר חסרות:** הפונקציות `formatILS` (להצגת מטבע שקלי) ו-`updateRangeText` (עבור ה-Sliders) נקראו במנוע החישוב אך לא הוגדרו.
-4. **שגיאה בעיצוב הדינמי:** הפונקציה `triggerThemeUpdateOnRateChange` נקראה ב-`oninput` של שדה התעריף השעתי אך לא הייתה קיימת (הלוגיקה כבר מנוהלת בתוך `calculatePayroll`).
-
----
-
-### הקוד המלא והמתוקן עבור `salary_calculator.html`
-
-הנה הקוד המלא של ה-Frontend, מוכן להעתקה והדבקה במקום הקוד הישן שלך. כל הפונקציות החסרות הושלמו בצורה סינכרונית ומלאה מול ה-API של השרת שלך:
+אתה יכול להעתיק את כל הקוד שלהלן ולהחליף לחלוטין את תוכן הקובץ שלך:
 
 ```html
 <!DOCTYPE html>
@@ -20,37 +11,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מחשבון שכר וניהול משמרות אינטראקטיבי</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: 'var(--color-brand-50)',
-                            100: 'var(--color-brand-100)',
-                            200: 'var(--color-brand-200)',
-                            500: 'var(--color-brand-500)',
-                            600: 'var(--color-brand-600)',
-                            700: 'var(--color-brand-700)',
-                            900: 'var(--color-brand-900)',
-                        },
-                        navy: {
-                            50: '#f8fafc',
-                            100: '#f1f5f9',
-                            800: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         /* CSS Variables for Dynamic Accent Colors based on Net Pay */
         :root {
@@ -879,31 +840,6 @@
             }
         }
 
-        // CUSTOM ALERT LOGIC
-        function showCustomAlert(title, message, isSuccess = true) {
-            const modal = document.getElementById('customAlertModal');
-            const iconContainer = document.getElementById('alertIconContainer');
-            const titleEl = document.getElementById('alertTitle');
-            const msgEl = document.getElementById('alertMessage');
-            
-            titleEl.textContent = title;
-            msgEl.textContent = message;
-            
-            if (isSuccess) {
-                iconContainer.className = "mx-auto w-12 h-12 flex items-center justify-center rounded-full mb-4 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400";
-                iconContainer.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
-            } else {
-                iconContainer.className = "mx-auto w-12 h-12 flex items-center justify-center rounded-full mb-4 bg-rose-50 dark:bg-rose-955/30 text-rose-600 dark:text-rose-400";
-                iconContainer.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
-            }
-            
-            modal.classList.remove('hidden');
-        }
-
-        function closeCustomAlert() {
-            document.getElementById('customAlertModal').classList.add('hidden');
-        }
-
         const API_BASE_URL = window.location.origin;
 
         async function fetchWithTimeout(resource, options = {}) {
@@ -1657,7 +1593,7 @@
             const foodAllowanceRate = parseFloat(elements.foodAllowance.value) || 0;
             const convalescenceUnits = parseFloat(elements.convalescenceUnits.value) || 0;
             const creditPoints = parseFloat(elements.creditPoints.value) || 0;
-            const hasKerenHishtalmut = elements.hasKerenHishtalmut.checked;
+            const hasKerenHishtalmut = document.getElementById('hasKerenHishtalmut').checked;
             const kerenHishtalmutRate = (parseFloat(elements.kerenHishtalmutRate.value) || 0) / 100;
             const pensionRate = (parseFloat(elements.pensionRate.value) || 0) / 100;
             const hasDmiTipul = elements.hasDmiTipul.checked;
