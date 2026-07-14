@@ -18,6 +18,10 @@ const pool = process.env.DATABASE_URL ? new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 }) : null;
+let databaseReady = false;
+function useDatabase() {
+    return Boolean(pool && databaseReady);
+}
 
 app.use(cors());
 app.use(express.json());
@@ -280,7 +284,7 @@ async function dbSaveProfile(profile) {
 
 app.get('/api/users', async (req, res) => {
     try {
-        if (pool) return res.json(await dbReadUsers());
+        if (useDatabase()) return res.json(await dbReadUsers());
         res.json(readUsers());
     } catch (e) {
         res.status(500).json({ error: "Could not read users" });
@@ -291,7 +295,7 @@ app.post('/api/users', async (req, res) => {
     try {
         const name = String(req.body.name || '').trim();
         if (!name) return res.status(400).json({ error: "User name is required" });
-        if (pool) {
+        if (useDatabase()) {
             const existing = await pool.query('SELECT id, name, created_at AS "createdAt" FROM users WHERE name = $1', [name]);
             if (existing.rows[0]) return res.json(existing.rows[0]);
             const user = { id: 'user_' + Date.now(), name };
@@ -312,7 +316,7 @@ app.post('/api/users', async (req, res) => {
 
 app.delete('/api/users/:id', async (req, res) => {
     try {
-        if (pool) {
+        if (useDatabase()) {
             const found = await pool.query('SELECT id, name FROM users WHERE id = $1', [req.params.id]);
             const user = found.rows[0];
             if (!user) return res.status(404).json({ error: "User not found" });
@@ -337,7 +341,7 @@ app.delete('/api/users/:id', async (req, res) => {
 
 app.get('/api/deleted-profiles', async (req, res) => {
     try {
-        if (pool) return res.json(await dbReadDeletedProfiles());
+        if (useDatabase()) return res.json(await dbReadDeletedProfiles());
         res.json(readDeletedProfiles());
     } catch (e) {
         res.status(500).json({ error: "Could not read deleted calculations" });
@@ -346,7 +350,7 @@ app.get('/api/deleted-profiles', async (req, res) => {
 
 app.post('/api/deleted-profiles/:id/restore', async (req, res) => {
     try {
-        if (pool) {
+        if (useDatabase()) {
             const found = await pool.query('SELECT id, data FROM deleted_calculations WHERE id = $1', [req.params.id]);
             if (!found.rows[0]) return res.status(404).json({ error: "Backup not found" });
             const restored = { ...found.rows[0].data, restoredAt: new Date().toISOString() };
@@ -375,7 +379,7 @@ app.post('/api/deleted-profiles/:id/restore', async (req, res) => {
 // REST API Endpoints for Profiles
 app.get('/api/profiles', async (req, res) => {
     try {
-        if (pool) return res.json(await dbReadProfiles());
+        if (useDatabase()) return res.json(await dbReadProfiles());
         const profiles = readProfiles();
         res.json(profiles);
     } catch (e) {
@@ -385,7 +389,7 @@ app.get('/api/profiles', async (req, res) => {
 
 app.post('/api/profiles', async (req, res) => {
     try {
-        const profiles = pool ? [] : readProfiles();
+        const profiles = useDatabase() ? [] : readProfiles();
         const newProfile = {
         id: 'profile_' + Date.now(),
         name: req.body.name || "חישוב חודשי חדש",
@@ -406,7 +410,7 @@ app.post('/api/profiles', async (req, res) => {
         shifts: req.body.shifts || []
     };
     
-        if (pool) {
+        if (useDatabase()) {
             await dbSaveProfile(newProfile);
         } else {
             profiles.push(newProfile);
@@ -420,7 +424,7 @@ app.post('/api/profiles', async (req, res) => {
 
 app.put('/api/profiles/:id', async (req, res) => {
     try {
-        const profiles = pool ? await dbReadProfiles() : readProfiles();
+        const profiles = useDatabase() ? await dbReadProfiles() : readProfiles();
         const index = profiles.findIndex(p => p.id === req.params.id);
         if (index === -1) {
             return res.status(404).json({ error: "Profile not found" });
@@ -446,7 +450,7 @@ app.put('/api/profiles/:id', async (req, res) => {
         shifts: Array.isArray(req.body.shifts) ? req.body.shifts : profiles[index].shifts
     };
     
-        if (pool) {
+        if (useDatabase()) {
             await dbSaveProfile(profiles[index]);
         } else {
             writeProfiles(profiles);
@@ -459,7 +463,7 @@ app.put('/api/profiles/:id', async (req, res) => {
 
 app.delete('/api/profiles/:id', async (req, res) => {
     try {
-        let profiles = pool ? await dbReadProfiles() : readProfiles();
+        let profiles = useDatabase() ? await dbReadProfiles() : readProfiles();
         const index = profiles.findIndex(p => p.id === req.params.id);
         if (index === -1) {
             return res.status(404).json({ error: "Profile not found" });
@@ -467,7 +471,7 @@ app.delete('/api/profiles/:id', async (req, res) => {
         
         const deletedProfile = profiles[index];
         const deletedId = 'deleted_' + Date.now();
-        if (pool) {
+        if (useDatabase()) {
             await pool.query('INSERT INTO deleted_calculations (id, data) VALUES ($1, $2)', [deletedId, deletedProfile]);
             await pool.query('DELETE FROM calculations WHERE id = $1', [req.params.id]);
         } else {
@@ -489,11 +493,18 @@ app.delete('/api/profiles/:id', async (req, res) => {
 
 initDatabase()
     .then(() => {
+        databaseReady = Boolean(pool);
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
+            console.log(databaseReady ? "Database persistence is enabled" : "Using local JSON persistence");
         });
     })
     .catch((e) => {
-        console.error("Failed to initialize database:", e);
-        process.exit(1);
+        databaseReady = false;
+        console.error("Database initialization failed. Starting with local JSON fallback.");
+        console.error(e.message || e);
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+            console.log("Using local JSON persistence because database initialization failed");
+        });
     });
