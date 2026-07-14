@@ -6,6 +6,8 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'profiles.json');
+const USERS_FILE = path.join(__dirname, 'users.json');
+const DELETED_PROFILES_FILE = path.join(__dirname, 'deleted_profiles.json');
 
 app.use(cors());
 app.use(express.json());
@@ -126,6 +128,82 @@ function writeProfiles(profiles) {
     }
 }
 
+function readJsonFile(filePath, fallback) {
+    try {
+        if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, JSON.stringify(fallback, null, 4), 'utf8');
+            return fallback;
+        }
+        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (e) {
+        console.error("Error reading json file:", e);
+        return fallback;
+    }
+}
+
+function writeJsonFile(filePath, data) {
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 4), 'utf8');
+        return true;
+    } catch (e) {
+        console.error("Error writing json file:", e);
+        return false;
+    }
+}
+
+function readUsers() {
+    const profiles = readProfiles();
+    const fallbackUsers = Array.from(new Set(profiles.map(p => p.userName || p.name).filter(Boolean)))
+        .map(name => ({ id: 'user_' + Buffer.from(name).toString('base64url'), name, createdAt: new Date().toISOString() }));
+    return readJsonFile(USERS_FILE, fallbackUsers);
+}
+
+function writeUsers(users) {
+    return writeJsonFile(USERS_FILE, users);
+}
+
+function readDeletedProfiles() {
+    return readJsonFile(DELETED_PROFILES_FILE, []);
+}
+
+function writeDeletedProfiles(items) {
+    return writeJsonFile(DELETED_PROFILES_FILE, items);
+}
+
+app.get('/api/users', (req, res) => {
+    res.json(readUsers());
+});
+
+app.post('/api/users', (req, res) => {
+    const users = readUsers();
+    const name = String(req.body.name || '').trim();
+    if (!name) return res.status(400).json({ error: "User name is required" });
+    const existing = users.find(u => u.name === name);
+    if (existing) return res.json(existing);
+    const user = { id: 'user_' + Date.now(), name, createdAt: new Date().toISOString() };
+    users.push(user);
+    writeUsers(users);
+    res.status(201).json(user);
+});
+
+app.get('/api/deleted-profiles', (req, res) => {
+    res.json(readDeletedProfiles());
+});
+
+app.post('/api/deleted-profiles/:id/restore', (req, res) => {
+    const deleted = readDeletedProfiles();
+    const index = deleted.findIndex(item => item.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: "Backup not found" });
+    const restored = { ...deleted[index].profile, restoredAt: new Date().toISOString() };
+    const profiles = readProfiles();
+    if (profiles.some(p => p.id === restored.id)) restored.id = 'profile_' + Date.now();
+    profiles.push(restored);
+    deleted.splice(index, 1);
+    writeProfiles(profiles);
+    writeDeletedProfiles(deleted);
+    res.json(restored);
+});
+
 // REST API Endpoints for Profiles
 app.get('/api/profiles', (req, res) => {
     const profiles = readProfiles();
@@ -197,7 +275,15 @@ app.delete('/api/profiles/:id', (req, res) => {
         return res.status(404).json({ error: "Profile not found" });
     }
     
+    const deletedProfile = profiles[index];
+    const deleted = readDeletedProfiles();
+    deleted.push({
+        id: 'deleted_' + Date.now(),
+        deletedAt: new Date().toISOString(),
+        profile: deletedProfile
+    });
     profiles = profiles.filter(p => p.id !== req.params.id);
+    writeDeletedProfiles(deleted);
     writeProfiles(profiles);
     res.json({ message: "Profile deleted successfully" });
 });

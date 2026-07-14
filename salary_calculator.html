@@ -133,7 +133,11 @@
                         <div class="text-[11px] text-slate-400 dark:text-slate-500 font-semibold">משתמש נבחר</div>
                         <div id="selectedUserNameText" class="text-sm font-extrabold text-slate-900 dark:text-white"></div>
                     </div>
-                    <button onclick="backToUserSelection()" class="text-xs bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white px-4 py-2 rounded-xl font-bold transition-colors">חזרה למשתמשים</button>
+                    <div class="flex items-center gap-2">
+                        <input type="month" id="newUserMonthInput" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 dark:[color-scheme:dark]">
+                        <button onclick="createMonthForSelectedUser()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl font-bold transition-colors">צור חודש</button>
+                        <button onclick="backToUserSelection()" class="text-xs bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white px-4 py-2 rounded-xl font-bold transition-colors">חזרה למשתמשים</button>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="profilesGrid">
                     <!-- Dynamic Profiles Cards injected here -->
@@ -147,6 +151,15 @@
             <!-- Admin Panel View -->
             <div id="profileAdminView" class="hidden space-y-6">
                 
+                <div class="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5">
+                    <h3 class="font-extrabold text-sm text-slate-900 dark:text-white mb-4">ניהול משתמשים</h3>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input type="text" id="admNewUserName" placeholder="שם משתמש חדש" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <button onclick="createAdminUser()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all duration-300 shadow-sm">צור משתמש</button>
+                    </div>
+                    <div id="adminUsersList" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+                </div>
+
                 <!-- Create/Edit Profile Form -->
                 <div class="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5">
                     <h3 class="font-extrabold text-sm text-slate-900 dark:text-white mb-4 flex items-center gap-1.5" id="formActionTitle">
@@ -236,6 +249,24 @@
                         <tbody id="adminProfilesTable" class="divide-y divide-slate-100 dark:divide-slate-800/60">
                             <!-- Injected dynamically -->
                         </tbody>
+                    </table>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <div class="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <h3 class="font-extrabold text-sm text-slate-900 dark:text-white">גיבוי חישובים שנמחקו</h3>
+                        <button onclick="fetchDeletedProfiles()" class="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-800 dark:text-white px-4 py-2 rounded-xl font-bold transition-colors">רענן</button>
+                    </div>
+                    <table class="w-full text-xs text-right">
+                        <thead class="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 uppercase sticky top-0 z-10">
+                            <tr>
+                                <th class="p-3">משתמש</th>
+                                <th class="p-3">חודש</th>
+                                <th class="p-3">נמחק בתאריך</th>
+                                <th class="p-3 text-center">שחזור</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deletedProfilesTable" class="divide-y divide-slate-100 dark:divide-slate-800/60"></tbody>
                     </table>
                 </div>
             </div>
@@ -826,6 +857,8 @@
         // Global State variables
         let activeProfile = null;
         let profiles = [];
+        let users = [];
+        let deletedProfiles = [];
         let selectedUserNameForSelection = null;
         let isServerOnline = false;
 
@@ -978,13 +1011,53 @@
                 if (!response.ok) throw new Error("API error");
                 profiles = await response.json();
                 isServerOnline = true;
+                await fetchUsers();
+                await fetchDeletedProfiles();
             } catch (e) {
                 console.warn("Could not connect to the server, using LocalStorage backup", e);
                 isServerOnline = false;
                 loadProfilesFromCache();
             }
+            syncUsersFromProfiles();
             renderProfilesGrid();
             renderAdminProfilesTable();
+            renderAdminUsersList();
+            renderDeletedProfilesTable();
+        }
+
+        async function fetchUsers() {
+            if (!isServerOnline && profiles.length) {
+                syncUsersFromProfiles();
+                return;
+            }
+            try {
+                const response = await fetchWithTimeout(`${API_BASE_URL}/api/users`, { timeout: 4000 });
+                if (!response.ok) throw new Error("Could not fetch users");
+                users = await response.json();
+            } catch (e) {
+                syncUsersFromProfiles();
+            }
+        }
+
+        async function fetchDeletedProfiles() {
+            if (!isServerOnline) {
+                renderDeletedProfilesTable();
+                return;
+            }
+            try {
+                const response = await fetchWithTimeout(`${API_BASE_URL}/api/deleted-profiles`, { timeout: 4000 });
+                if (!response.ok) throw new Error("Could not fetch deleted profiles");
+                deletedProfiles = await response.json();
+            } catch (e) {
+                deletedProfiles = [];
+            }
+            renderDeletedProfilesTable();
+        }
+
+        function syncUsersFromProfiles() {
+            const names = new Set(users.map(u => u.name).filter(Boolean));
+            profiles.map(p => p.userName || p.name).filter(Boolean).forEach(name => names.add(name));
+            users = Array.from(names).map(name => users.find(u => u.name === name) || ({ id: 'user_' + name, name }));
         }
 
         function loadProfilesFromCache() {
@@ -1070,10 +1143,13 @@
                 deleteProfileLocally(id);
             }
             await fetchProfiles();
+            await fetchDeletedProfiles();
         }
 
         function deleteProfileLocally(id) {
             if (Array.isArray(profiles)) {
+                const deleted = profiles.find(p => p.id === id);
+                if (deleted) deletedProfiles.push({ id: 'deleted_' + Date.now(), deletedAt: new Date().toISOString(), profile: deleted });
                 profiles = profiles.filter(p => p.id !== id);
             }
             saveProfilesToCache();
@@ -1287,12 +1363,95 @@
         }
 
         async function deleteProfileConfirm(id) {
-            if (confirm("האם אתה בטוח שברצונך למחוק את הפרופיל הזה לצמיתות?")) {
+            if (confirm("האם אתה בטוח שברצונך למחוק את החישוב הזה? ניתן יהיה לשחזר אותו דרך האדמין.")) {
                 if (activeProfile && activeProfile.id === id) {
                     activeProfile = null;
                 }
                 await apiDeleteProfile(id);
-                showCustomAlert("מחיקה", "הפרופיל נמחק בהצלחה מהרשימה.");
+                showCustomAlert("מחיקה", "החישוב נמחק ונשמר בגיבוי לשחזור.");
+            }
+        }
+
+        async function createAdminUser() {
+            const input = document.getElementById('admNewUserName');
+            const name = input.value.trim();
+            if (!name) {
+                showCustomAlert("שגיאה", "אנא הזן שם משתמש", false);
+                return;
+            }
+            if (isServerOnline) {
+                try {
+                    const response = await fetchWithTimeout(`${API_BASE_URL}/api/users`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name }),
+                        timeout: 4000
+                    });
+                    if (!response.ok) throw new Error("Could not create user");
+                    const user = await response.json();
+                    if (!users.some(u => u.name === user.name)) users.push(user);
+                } catch (e) {
+                    if (!users.some(u => u.name === name)) users.push({ id: 'user_' + Date.now(), name });
+                }
+            } else if (!users.some(u => u.name === name)) {
+                users.push({ id: 'user_' + Date.now(), name });
+            }
+            input.value = '';
+            renderAdminUsersList();
+            renderProfilesGrid();
+            showCustomAlert("הצלחה", "המשתמש נוצר בהצלחה");
+        }
+
+        async function createMonthForSelectedUser() {
+            if (!selectedUserNameForSelection) return;
+            const monthInput = document.getElementById('newUserMonthInput');
+            const calculationMonth = monthInput.value || new Date().toISOString().slice(0, 7);
+            const existing = profiles.find(p => getProfileUserName(p) === selectedUserNameForSelection && (p.calculationMonth || inferMonthFromShifts(p.shifts)) === calculationMonth);
+            if (existing) {
+                showCustomAlert("חודש קיים", "כבר קיים חישוב לחודש הזה עבור המשתמש.", false);
+                return;
+            }
+            const profileData = {
+                name: `${selectedUserNameForSelection} - ${calculationMonth}`,
+                userName: selectedUserNameForSelection,
+                calculationMonth,
+                savedAt: new Date().toISOString(),
+                hourlyRate: STUB_DEFAULTS.hourlyRate,
+                creditPoints: STUB_DEFAULTS.creditPoints,
+                travelFixed: STUB_DEFAULTS.travelFixed,
+                travelDaily: STUB_DEFAULTS.travelDaily,
+                foodAllowance: STUB_DEFAULTS.foodAllowance,
+                convalescenceUnits: STUB_DEFAULTS.convalescenceUnits,
+                pensionRate: STUB_DEFAULTS.pensionRate,
+                hasKerenHishtalmut: STUB_DEFAULTS.hasKerenHishtalmut,
+                kerenHishtalmutRate: STUB_DEFAULTS.kerenHishtalmutRate,
+                hasDmiTipul: STUB_DEFAULTS.hasDmiTipul,
+                dmiTipulRate: STUB_DEFAULTS.dmiTipulRate,
+                shifts: []
+            };
+            await createOrUpdateProfile(profileData);
+            selectedUserNameForSelection = profileData.userName;
+            showCustomAlert("הצלחה", "חישוב חודשי חדש נוצר בהצלחה");
+        }
+
+        async function restoreDeletedProfile(id) {
+            if (!isServerOnline) {
+                const index = deletedProfiles.findIndex(item => item.id === id);
+                if (index === -1) return;
+                profiles.push(deletedProfiles[index].profile);
+                deletedProfiles.splice(index, 1);
+                saveProfilesToCache();
+                renderProfilesGrid();
+                renderDeletedProfilesTable();
+                return;
+            }
+            try {
+                const response = await fetchWithTimeout(`${API_BASE_URL}/api/deleted-profiles/${id}/restore`, { method: 'POST', timeout: 4000 });
+                if (!response.ok) throw new Error("Could not restore profile");
+                await fetchProfiles();
+                showCustomAlert("שוחזר", "החישוב שוחזר בהצלחה");
+            } catch (e) {
+                showCustomAlert("שגיאה", "לא ניתן היה לשחזר את החישוב", false);
             }
         }
 
@@ -1329,12 +1488,19 @@
             if (!Array.isArray(profiles)) profiles = [];
 
             if (!selectedUserNameForSelection) {
+                syncUsersFromProfiles();
                 userSearchContainer.classList.remove('hidden');
                 selectedUserHeader.classList.add('hidden');
                 selectedUserHeader.classList.remove('flex');
 
                 const searchTerm = (document.getElementById('userSearchInput')?.value || '').trim().toLocaleLowerCase('he');
                 const userMap = new Map();
+
+                users.forEach(u => {
+                    if (u.name && !userMap.has(u.name)) {
+                        userMap.set(u.name, { userName: u.name, count: 0, months: [] });
+                    }
+                });
 
                 profiles.forEach(p => {
                     const userName = getProfileUserName(p);
@@ -1406,11 +1572,53 @@
                         </div>
                         <div class="flex items-center justify-between border-t border-slate-200 dark:border-slate-700/60 pt-3 text-[10px] text-slate-400">
                             <span>משמרות שמורות: <strong>${shiftsCount}</strong></span>
-                            <span class="text-brand-600 dark:text-brand-400 font-bold flex items-center gap-0.5">טען חודש</span>
+                            <span class="flex items-center gap-3">
+                                <button onclick="event.stopPropagation(); deleteProfileConfirm('${p.id}')" class="text-rose-500 hover:text-rose-600 font-bold">מחק</button>
+                                <span class="text-brand-600 dark:text-brand-400 font-bold">טען חודש</span>
+                            </span>
                         </div>
                     `;
                     grid.appendChild(card);
                 });
+        }
+
+        function renderAdminUsersList() {
+            const list = document.getElementById('adminUsersList');
+            if (!list) return;
+            syncUsersFromProfiles();
+            list.innerHTML = '';
+            users
+                .slice()
+                .sort((a, b) => a.name.localeCompare(b.name, 'he'))
+                .forEach(u => {
+                    const item = document.createElement('div');
+                    const count = profiles.filter(p => getProfileUserName(p) === u.name).length;
+                    item.className = "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs flex items-center justify-between";
+                    item.innerHTML = `<span class="font-bold text-slate-900 dark:text-white">${u.name}</span><span class="text-slate-400">${count} חודשים</span>`;
+                    list.appendChild(item);
+                });
+        }
+
+        function renderDeletedProfilesTable() {
+            const tbody = document.getElementById('deletedProfilesTable');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            if (!Array.isArray(deletedProfiles) || deletedProfiles.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400">אין חישובים מחוקים לשחזור.</td></tr>';
+                return;
+            }
+            deletedProfiles.slice().reverse().forEach(item => {
+                const p = item.profile || {};
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-800/50";
+                row.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-900 dark:text-white text-xs">${p.userName || p.name || ''}</td>
+                    <td class="p-3 text-xs font-mono text-slate-700 dark:text-slate-300">${p.calculationMonth || inferMonthFromShifts(p.shifts) || ''}</td>
+                    <td class="p-3 text-xs font-mono text-slate-700 dark:text-slate-300">${item.deletedAt ? new Date(item.deletedAt).toLocaleString('he-IL') : ''}</td>
+                    <td class="p-3 text-center"><button onclick="restoreDeletedProfile('${item.id}')" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold">שחזר</button></td>
+                `;
+                tbody.appendChild(row);
+            });
         }
 
         function renderAdminProfilesTable() {
