@@ -5,9 +5,14 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'profiles.json');
-const USERS_FILE = path.join(__dirname, 'users.json');
-const DELETED_PROFILES_FILE = path.join(__dirname, 'deleted_profiles.json');
+const DATA_DIR = path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+const DATA_FILE = path.join(DATA_DIR, 'calculations.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const DELETED_PROFILES_FILE = path.join(DATA_DIR, 'deleted_calculations.json');
+const LEGACY_PROFILES_FILE = path.join(__dirname, 'profiles.json');
+const LEGACY_USERS_FILE = path.join(__dirname, 'users.json');
+const LEGACY_DELETED_PROFILES_FILE = path.join(__dirname, 'deleted_profiles.json');
 
 app.use(cors());
 app.use(express.json());
@@ -25,6 +30,9 @@ app.get('/salary_calculator.html', (req, res) => {
 // Helper function to read profiles from file
 function readProfiles() {
     try {
+        if (!fs.existsSync(DATA_FILE) && fs.existsSync(LEGACY_PROFILES_FILE)) {
+            fs.copyFileSync(LEGACY_PROFILES_FILE, DATA_FILE);
+        }
         if (!fs.existsSync(DATA_FILE)) {
             // Write defaults based on your real pay stubs if no file exists yet
             const defaultProfiles = [
@@ -152,10 +160,17 @@ function writeJsonFile(filePath, data) {
 }
 
 function readUsers() {
-    const profiles = readProfiles();
-    const fallbackUsers = Array.from(new Set(profiles.map(p => p.userName || p.name).filter(Boolean)))
-        .map(name => ({ id: 'user_' + Buffer.from(name).toString('base64url'), name, createdAt: new Date().toISOString() }));
-    return readJsonFile(USERS_FILE, fallbackUsers);
+    if (!fs.existsSync(USERS_FILE) && fs.existsSync(LEGACY_USERS_FILE)) {
+        fs.copyFileSync(LEGACY_USERS_FILE, USERS_FILE);
+    }
+    if (!fs.existsSync(USERS_FILE)) {
+        const profiles = readProfiles();
+        const initialUsers = Array.from(new Set(profiles.map(p => p.userName || p.name).filter(Boolean)))
+            .map(name => ({ id: 'user_' + Buffer.from(name).toString('base64url'), name, createdAt: new Date().toISOString() }));
+        writeJsonFile(USERS_FILE, initialUsers);
+        return initialUsers;
+    }
+    return readJsonFile(USERS_FILE, []);
 }
 
 function writeUsers(users) {
@@ -163,6 +178,9 @@ function writeUsers(users) {
 }
 
 function readDeletedProfiles() {
+    if (!fs.existsSync(DELETED_PROFILES_FILE) && fs.existsSync(LEGACY_DELETED_PROFILES_FILE)) {
+        fs.copyFileSync(LEGACY_DELETED_PROFILES_FILE, DELETED_PROFILES_FILE);
+    }
     return readJsonFile(DELETED_PROFILES_FILE, []);
 }
 

@@ -1026,16 +1026,17 @@
         }
 
         async function fetchUsers() {
-            if (!isServerOnline && profiles.length) {
-                syncUsersFromProfiles();
+            if (!isServerOnline) {
+                loadUsersFromCache();
                 return;
             }
             try {
                 const response = await fetchWithTimeout(`${API_BASE_URL}/api/users`, { timeout: 4000 });
                 if (!response.ok) throw new Error("Could not fetch users");
                 users = await response.json();
+                localStorage.setItem('salary_calculator_local_users', JSON.stringify(users));
             } catch (e) {
-                syncUsersFromProfiles();
+                loadUsersFromCache();
             }
         }
 
@@ -1055,13 +1056,21 @@
         }
 
         function syncUsersFromProfiles() {
-            const names = new Set(users.map(u => u.name).filter(Boolean));
-            profiles.map(p => p.userName || p.name).filter(Boolean).forEach(name => names.add(name));
-            users = Array.from(names).map(name => users.find(u => u.name === name) || ({ id: 'user_' + name, name }));
+            if (!Array.isArray(users)) users = [];
+        }
+
+        function loadUsersFromCache() {
+            const raw = localStorage.getItem('salary_calculator_local_users');
+            users = raw ? JSON.parse(raw) : [];
+        }
+
+        function saveUsersToCache() {
+            localStorage.setItem('salary_calculator_local_users', JSON.stringify(users));
         }
 
         function loadProfilesFromCache() {
             const raw = localStorage.getItem('salary_calculator_local_profiles');
+            loadUsersFromCache();
             if (raw) {
                 profiles = JSON.parse(raw);
             } else {
@@ -1397,6 +1406,7 @@
                 users.push({ id: 'user_' + Date.now(), name });
             }
             input.value = '';
+            saveUsersToCache();
             renderAdminUsersList();
             renderProfilesGrid();
             showCustomAlert("הצלחה", "המשתמש נוצר בהצלחה");
@@ -1420,6 +1430,7 @@
                 }
             }
             users = users.filter(u => u.id !== id && u.name !== name);
+            saveUsersToCache();
             renderAdminUsersList();
             renderProfilesGrid();
             showCustomAlert("נמחק", "המשתמש נמחק בהצלחה");
@@ -1511,7 +1522,6 @@
             if (!Array.isArray(profiles)) profiles = [];
 
             if (!selectedUserNameForSelection) {
-                syncUsersFromProfiles();
                 userSearchContainer.classList.remove('hidden');
                 selectedUserHeader.classList.add('hidden');
                 selectedUserHeader.classList.remove('flex');
@@ -1527,9 +1537,7 @@
 
                 profiles.forEach(p => {
                     const userName = getProfileUserName(p);
-                    if (!userMap.has(userName)) {
-                        userMap.set(userName, { userName, count: 0, months: [] });
-                    }
+                    if (!userMap.has(userName)) return;
                     const entry = userMap.get(userName);
                     entry.count += 1;
                     entry.months.push(p.calculationMonth || inferMonthFromShifts(p.shifts) || 'ללא חודש');
@@ -1608,7 +1616,6 @@
         function renderAdminUsersList() {
             const list = document.getElementById('adminUsersList');
             if (!list) return;
-            syncUsersFromProfiles();
             list.innerHTML = '';
             users
                 .slice()
