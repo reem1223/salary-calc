@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +14,10 @@ const DELETED_PROFILES_FILE = path.join(DATA_DIR, 'deleted_calculations.json');
 const LEGACY_PROFILES_FILE = path.join(__dirname, 'profiles.json');
 const LEGACY_USERS_FILE = path.join(__dirname, 'users.json');
 const LEGACY_DELETED_PROFILES_FILE = path.join(__dirname, 'deleted_profiles.json');
+const pool = process.env.DATABASE_URL ? new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+}) : null;
 
 app.use(cors());
 app.use(express.json());
@@ -188,65 +193,200 @@ function writeDeletedProfiles(items) {
     return writeJsonFile(DELETED_PROFILES_FILE, items);
 }
 
-app.get('/api/users', (req, res) => {
-    res.json(readUsers());
-});
+async function initDatabase() {
+    if (!pool) return;
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE TABLE IF NOT EXISTS calculations (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            user_name TEXT NOT NULL,
+            calculation_month TEXT NOT NULL,
+            saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            data JSONB NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS deleted_calculations (
+            id TEXT PRIMARY KEY,
+            deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            data JSONB NOT NULL
+        );
+    `);
 
-app.post('/api/users', (req, res) => {
-    const users = readUsers();
-    const name = String(req.body.name || '').trim();
-    if (!name) return res.status(400).json({ error: "User name is required" });
-    const existing = users.find(u => u.name === name);
-    if (existing) return res.json(existing);
-    const user = { id: 'user_' + Date.now(), name, createdAt: new Date().toISOString() };
-    users.push(user);
-    writeUsers(users);
-    res.status(201).json(user);
-});
-
-app.delete('/api/users/:id', (req, res) => {
-    const users = readUsers();
-    const user = users.find(u => u.id === req.params.id);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    const profiles = readProfiles();
-    const hasCalculations = profiles.some(p => (p.userName || p.name) === user.name);
-    if (hasCalculations) {
-        return res.status(409).json({ error: "Cannot delete user with existing calculations" });
+    const userCount = await pool.query('SELECT COUNT(*)::int AS count FROM users');
+    if (userCount.rows[0].count === 0) {
+        for (const user of readUsers()) {
+            await pool.query('INSERT INTO users (id, name, created_at) VALUES ($1, $2, COALESCE($3::timestamptz, NOW())) ON CONFLICT (id) DO NOTHING', [user.id, user.name, user.createdAt]);
+        }
     }
 
-    const nextUsers = users.filter(u => u.id !== req.params.id);
-    writeUsers(nextUsers);
-    res.json({ message: "User deleted successfully" });
+    const profileCount = await pool.query('SELECT COUNT(*)::int AS count FROM calculations');
+    if (profileCount.rows[0].count === 0) {
+        for (const profile of readProfiles()) {
+            await dbSaveProfile(profile);
+        }
+    }
+
+    const deletedCount = await pool.query('SELECT COUNT(*)::int AS count FROM deleted_calculations');
+    if (deletedCount.rows[0].count === 0) {
+        for (const item of readDeletedProfiles()) {
+            await pool.query('INSERT INTO deleted_calculations (id, deleted_at, data) VALUES ($1, COALESCE($2::timestamptz, NOW()), $3) ON CONFLICT (id) DO NOTHING', [item.id, item.deletedAt, item.profile]);
+        }
+    }
+}
+
+function rowToProfile(row) {
+    return {
+        ...(row.data || {}),
+        id: row.id,
+        name: row.name,
+        userName: row.user_name,
+        calculationMonth: row.calculation_month,
+        savedAt: row.saved_at
+    };
+}
+
+async function dbReadUsers() {
+    const result = await pool.query('SELECT id, name, created_at AS "createdAt" FROM users ORDER BY name ASC');
+    return result.rows;
+}
+
+async function dbReadProfiles() {
+    const result = await pool.query('SELECT * FROM calculations ORDER BY user_name ASC, calculation_month DESC');
+    return result.rows.map(rowToProfile);
+}
+
+async function dbReadDeletedProfiles() {
+    const result = await pool.query('SELECT id, deleted_at, data FROM deleted_calculations ORDER BY deleted_at DESC');
+    return result.rows.map(row => ({ id: row.id, deletedAt: row.deleted_at, profile: row.data }));
+}
+
+async function dbSaveProfile(profile) {
+    await pool.query(
+        `INSERT INTO calculations (id, name, user_name, calculation_month, saved_at, data)
+         VALUES ($1, $2, $3, $4, NOW(), $5)
+         ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            user_name = EXCLUDED.user_name,
+            calculation_month = EXCLUDED.calculation_month,
+            saved_at = NOW(),
+            data = EXCLUDED.data`,
+        [profile.id, profile.name, profile.userName, profile.calculationMonth, profile]
+    );
+}
+
+app.get('/api/users', async (req, res) => {
+    try {
+        if (pool) return res.json(await dbReadUsers());
+        res.json(readUsers());
+    } catch (e) {
+        res.status(500).json({ error: "Could not read users" });
+    }
 });
 
-app.get('/api/deleted-profiles', (req, res) => {
-    res.json(readDeletedProfiles());
+app.post('/api/users', async (req, res) => {
+    try {
+        const name = String(req.body.name || '').trim();
+        if (!name) return res.status(400).json({ error: "User name is required" });
+        if (pool) {
+            const existing = await pool.query('SELECT id, name, created_at AS "createdAt" FROM users WHERE name = $1', [name]);
+            if (existing.rows[0]) return res.json(existing.rows[0]);
+            const user = { id: 'user_' + Date.now(), name };
+            const inserted = await pool.query('INSERT INTO users (id, name) VALUES ($1, $2) RETURNING id, name, created_at AS "createdAt"', [user.id, user.name]);
+            return res.status(201).json(inserted.rows[0]);
+        }
+        const users = readUsers();
+        const existing = users.find(u => u.name === name);
+        if (existing) return res.json(existing);
+        const user = { id: 'user_' + Date.now(), name, createdAt: new Date().toISOString() };
+        users.push(user);
+        writeUsers(users);
+        res.status(201).json(user);
+    } catch (e) {
+        res.status(500).json({ error: "Could not save user" });
+    }
 });
 
-app.post('/api/deleted-profiles/:id/restore', (req, res) => {
-    const deleted = readDeletedProfiles();
-    const index = deleted.findIndex(item => item.id === req.params.id);
-    if (index === -1) return res.status(404).json({ error: "Backup not found" });
-    const restored = { ...deleted[index].profile, restoredAt: new Date().toISOString() };
-    const profiles = readProfiles();
-    if (profiles.some(p => p.id === restored.id)) restored.id = 'profile_' + Date.now();
-    profiles.push(restored);
-    deleted.splice(index, 1);
-    writeProfiles(profiles);
-    writeDeletedProfiles(deleted);
-    res.json(restored);
+app.delete('/api/users/:id', async (req, res) => {
+    try {
+        if (pool) {
+            const found = await pool.query('SELECT id, name FROM users WHERE id = $1', [req.params.id]);
+            const user = found.rows[0];
+            if (!user) return res.status(404).json({ error: "User not found" });
+            const calc = await pool.query('SELECT 1 FROM calculations WHERE user_name = $1 LIMIT 1', [user.name]);
+            if (calc.rows.length) return res.status(409).json({ error: "Cannot delete user with existing calculations" });
+            await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
+            return res.json({ message: "User deleted successfully" });
+        }
+        const users = readUsers();
+        const user = users.find(u => u.id === req.params.id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+        const profiles = readProfiles();
+        const hasCalculations = profiles.some(p => (p.userName || p.name) === user.name);
+        if (hasCalculations) return res.status(409).json({ error: "Cannot delete user with existing calculations" });
+        const nextUsers = users.filter(u => u.id !== req.params.id);
+        writeUsers(nextUsers);
+        res.json({ message: "User deleted successfully" });
+    } catch (e) {
+        res.status(500).json({ error: "Could not delete user" });
+    }
+});
+
+app.get('/api/deleted-profiles', async (req, res) => {
+    try {
+        if (pool) return res.json(await dbReadDeletedProfiles());
+        res.json(readDeletedProfiles());
+    } catch (e) {
+        res.status(500).json({ error: "Could not read deleted calculations" });
+    }
+});
+
+app.post('/api/deleted-profiles/:id/restore', async (req, res) => {
+    try {
+        if (pool) {
+            const found = await pool.query('SELECT id, data FROM deleted_calculations WHERE id = $1', [req.params.id]);
+            if (!found.rows[0]) return res.status(404).json({ error: "Backup not found" });
+            const restored = { ...found.rows[0].data, restoredAt: new Date().toISOString() };
+            const exists = await pool.query('SELECT 1 FROM calculations WHERE id = $1', [restored.id]);
+            if (exists.rows.length) restored.id = 'profile_' + Date.now();
+            await dbSaveProfile(restored);
+            await pool.query('DELETE FROM deleted_calculations WHERE id = $1', [req.params.id]);
+            return res.json(restored);
+        }
+        const deleted = readDeletedProfiles();
+        const index = deleted.findIndex(item => item.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: "Backup not found" });
+        const restored = { ...deleted[index].profile, restoredAt: new Date().toISOString() };
+        const profiles = readProfiles();
+        if (profiles.some(p => p.id === restored.id)) restored.id = 'profile_' + Date.now();
+        profiles.push(restored);
+        deleted.splice(index, 1);
+        writeProfiles(profiles);
+        writeDeletedProfiles(deleted);
+        res.json(restored);
+    } catch (e) {
+        res.status(500).json({ error: "Could not restore calculation" });
+    }
 });
 
 // REST API Endpoints for Profiles
-app.get('/api/profiles', (req, res) => {
-    const profiles = readProfiles();
-    res.json(profiles);
+app.get('/api/profiles', async (req, res) => {
+    try {
+        if (pool) return res.json(await dbReadProfiles());
+        const profiles = readProfiles();
+        res.json(profiles);
+    } catch (e) {
+        res.status(500).json({ error: "Could not read calculations" });
+    }
 });
 
-app.post('/api/profiles', (req, res) => {
-    const profiles = readProfiles();
-    const newProfile = {
+app.post('/api/profiles', async (req, res) => {
+    try {
+        const profiles = pool ? [] : readProfiles();
+        const newProfile = {
         id: 'profile_' + Date.now(),
         name: req.body.name || "חישוב חודשי חדש",
         userName: req.body.userName || req.body.name || "משתמש חדש",
@@ -266,19 +406,27 @@ app.post('/api/profiles', (req, res) => {
         shifts: req.body.shifts || []
     };
     
-    profiles.push(newProfile);
-    writeProfiles(profiles);
-    res.status(201).json(newProfile);
+        if (pool) {
+            await dbSaveProfile(newProfile);
+        } else {
+            profiles.push(newProfile);
+            writeProfiles(profiles);
+        }
+        res.status(201).json(newProfile);
+    } catch (e) {
+        res.status(500).json({ error: "Could not save calculation" });
+    }
 });
 
-app.put('/api/profiles/:id', (req, res) => {
-    const profiles = readProfiles();
-    const index = profiles.findIndex(p => p.id === req.params.id);
-    if (index === -1) {
-        return res.status(404).json({ error: "Profile not found" });
-    }
-    
-    profiles[index] = {
+app.put('/api/profiles/:id', async (req, res) => {
+    try {
+        const profiles = pool ? await dbReadProfiles() : readProfiles();
+        const index = profiles.findIndex(p => p.id === req.params.id);
+        if (index === -1) {
+            return res.status(404).json({ error: "Profile not found" });
+        }
+        
+        profiles[index] = {
         ...profiles[index],
         name: req.body.name || profiles[index].name,
         userName: req.body.userName ?? profiles[index].userName ?? profiles[index].name,
@@ -298,30 +446,54 @@ app.put('/api/profiles/:id', (req, res) => {
         shifts: Array.isArray(req.body.shifts) ? req.body.shifts : profiles[index].shifts
     };
     
-    writeProfiles(profiles);
-    res.json(profiles[index]);
-});
-
-app.delete('/api/profiles/:id', (req, res) => {
-    let profiles = readProfiles();
-    const index = profiles.findIndex(p => p.id === req.params.id);
-    if (index === -1) {
-        return res.status(404).json({ error: "Profile not found" });
+        if (pool) {
+            await dbSaveProfile(profiles[index]);
+        } else {
+            writeProfiles(profiles);
+        }
+        res.json(profiles[index]);
+    } catch (e) {
+        res.status(500).json({ error: "Could not update calculation" });
     }
-    
-    const deletedProfile = profiles[index];
-    const deleted = readDeletedProfiles();
-    deleted.push({
-        id: 'deleted_' + Date.now(),
-        deletedAt: new Date().toISOString(),
-        profile: deletedProfile
-    });
-    profiles = profiles.filter(p => p.id !== req.params.id);
-    writeDeletedProfiles(deleted);
-    writeProfiles(profiles);
-    res.json({ message: "Profile deleted successfully" });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.delete('/api/profiles/:id', async (req, res) => {
+    try {
+        let profiles = pool ? await dbReadProfiles() : readProfiles();
+        const index = profiles.findIndex(p => p.id === req.params.id);
+        if (index === -1) {
+            return res.status(404).json({ error: "Profile not found" });
+        }
+        
+        const deletedProfile = profiles[index];
+        const deletedId = 'deleted_' + Date.now();
+        if (pool) {
+            await pool.query('INSERT INTO deleted_calculations (id, data) VALUES ($1, $2)', [deletedId, deletedProfile]);
+            await pool.query('DELETE FROM calculations WHERE id = $1', [req.params.id]);
+        } else {
+            const deleted = readDeletedProfiles();
+            deleted.push({
+                id: deletedId,
+                deletedAt: new Date().toISOString(),
+                profile: deletedProfile
+            });
+            profiles = profiles.filter(p => p.id !== req.params.id);
+            writeDeletedProfiles(deleted);
+            writeProfiles(profiles);
+        }
+        res.json({ message: "Profile deleted successfully" });
+    } catch (e) {
+        res.status(500).json({ error: "Could not delete calculation" });
+    }
 });
+
+initDatabase()
+    .then(() => {
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+    })
+    .catch((e) => {
+        console.error("Failed to initialize database:", e);
+        process.exit(1);
+    });
