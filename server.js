@@ -29,6 +29,8 @@ function readProfiles() {
                 {
                     id: "profile_june_2026",
                     name: "מזרחי ראם - יוני 2026 (בסיס 54.97)",
+                    userName: "מזרחי ראם",
+                    calculationMonth: "2026-06",
                     hourlyRate: 54.97,
                     creditPoints: 4.25,
                     travelFixed: 272.00,
@@ -62,6 +64,8 @@ function readProfiles() {
                 {
                     id: "profile_feb_2026",
                     name: "מזרחי ראם - פברואר 2026 (בסיס 53.22)",
+                    userName: "מזרחי ראם",
+                    calculationMonth: "2026-02",
                     hourlyRate: 53.22,
                     creditPoints: 4.25,
                     travelFixed: 323.00,
@@ -84,6 +88,8 @@ function readProfiles() {
                 {
                     id: "profile_empty",
                     name: "סימולטור נקי (משמרות ריקות)",
+                    userName: "משתמש חדש",
+                    calculationMonth: new Date().toISOString().slice(0, 7),
                     hourlyRate: 54.97,
                     creditPoints: 4.25,
                     travelFixed: 272.00,
@@ -130,7 +136,10 @@ app.post('/api/profiles', (req, res) => {
     const profiles = readProfiles();
     const newProfile = {
         id: 'profile_' + Date.now(),
-        name: req.body.name || "פרופיל חדש",
+        name: req.body.name || "חישוב חודשי חדש",
+        userName: req.body.userName || req.body.name || "משתמש חדש",
+        calculationMonth: req.body.calculationMonth || new Date().toISOString().slice(0, 7),
+        savedAt: new Date().toISOString(),
         hourlyRate: parseFloat(req.body.hourlyRate) || 54.97,
         creditPoints: parseFloat(req.body.creditPoints) || 4.25,
         travelFixed: parseFloat(req.body.travelFixed) || 0,
@@ -160,18 +169,21 @@ app.put('/api/profiles/:id', (req, res) => {
     profiles[index] = {
         ...profiles[index],
         name: req.body.name || profiles[index].name,
-        hourlyRate: parseFloat(req.body.hourlyRate) ?? profiles[index].hourlyRate,
-        creditPoints: parseFloat(req.body.creditPoints) ?? profiles[index].creditPoints,
-        travelFixed: parseFloat(req.body.travelFixed) ?? profiles[index].travelFixed,
-        travelDaily: parseFloat(req.body.travelDaily) ?? profiles[index].travelDaily,
-        foodAllowance: parseFloat(req.body.foodAllowance) ?? profiles[index].foodAllowance,
-        convalescenceUnits: parseFloat(req.body.convalescenceUnits) ?? profiles[index].convalescenceUnits,
-        pensionRate: parseFloat(req.body.pensionRate) ?? profiles[index].pensionRate,
+        userName: req.body.userName ?? profiles[index].userName ?? profiles[index].name,
+        calculationMonth: req.body.calculationMonth ?? profiles[index].calculationMonth,
+        savedAt: new Date().toISOString(),
+        hourlyRate: Number.isNaN(parseFloat(req.body.hourlyRate)) ? profiles[index].hourlyRate : parseFloat(req.body.hourlyRate),
+        creditPoints: Number.isNaN(parseFloat(req.body.creditPoints)) ? profiles[index].creditPoints : parseFloat(req.body.creditPoints),
+        travelFixed: Number.isNaN(parseFloat(req.body.travelFixed)) ? profiles[index].travelFixed : parseFloat(req.body.travelFixed),
+        travelDaily: Number.isNaN(parseFloat(req.body.travelDaily)) ? profiles[index].travelDaily : parseFloat(req.body.travelDaily),
+        foodAllowance: Number.isNaN(parseFloat(req.body.foodAllowance)) ? profiles[index].foodAllowance : parseFloat(req.body.foodAllowance),
+        convalescenceUnits: Number.isNaN(parseFloat(req.body.convalescenceUnits)) ? profiles[index].convalescenceUnits : parseFloat(req.body.convalescenceUnits),
+        pensionRate: Number.isNaN(parseFloat(req.body.pensionRate)) ? profiles[index].pensionRate : parseFloat(req.body.pensionRate),
         hasKerenHishtalmut: req.body.hasKerenHishtalmut ?? profiles[index].hasKerenHishtalmut,
-        kerenHishtalmutRate: parseFloat(req.body.kerenHishtalmutRate) ?? profiles[index].kerenHishtalmutRate,
+        kerenHishtalmutRate: Number.isNaN(parseFloat(req.body.kerenHishtalmutRate)) ? profiles[index].kerenHishtalmutRate : parseFloat(req.body.kerenHishtalmutRate),
         hasDmiTipul: req.body.hasDmiTipul ?? profiles[index].hasDmiTipul,
-        dmiTipulRate: parseFloat(req.body.dmiTipulRate) ?? profiles[index].dmiTipulRate,
-        shifts: req.body.shifts || profiles[index].shifts
+        dmiTipulRate: Number.isNaN(parseFloat(req.body.dmiTipulRate)) ? profiles[index].dmiTipulRate : parseFloat(req.body.dmiTipulRate),
+        shifts: Array.isArray(req.body.shifts) ? req.body.shifts : profiles[index].shifts
     };
     
     writeProfiles(profiles);

@@ -104,8 +104,8 @@
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                     </div>
                     <div>
-                        <h2 class="text-xl font-extrabold text-slate-900 dark:text-white" id="overlayTitle">בחר פרופיל עבודה</h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">אנא בחר פרופיל קיים או פתח את פאנל הניהול</p>
+                        <h2 class="text-xl font-extrabold text-slate-900 dark:text-white" id="overlayTitle">בחר משתמש וחודש</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">בחר חישוב חודשי שמור או פתח את פאנל הניהול</p>
                     </div>
                 </div>
                 
@@ -140,14 +140,22 @@
                 <div class="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5">
                     <h3 class="font-extrabold text-sm text-slate-900 dark:text-white mb-4 flex items-center gap-1.5" id="formActionTitle">
                         <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        <span>צור פרופיל עבודה חדש</span>
+                        <span>צור חישוב חודשי חדש</span>
                     </h3>
                     
                     <input type="hidden" id="editProfileId" value="">
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                        <div class="sm:col-span-2">
-                            <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1" for="admName">שם פרופיל</label>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1" for="admUserName">שם משתמש</label>
+                            <input type="text" id="admUserName" placeholder="לדוגמה: ראם" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1" for="admCalculationMonth">חודש חישוב</label>
+                            <input type="month" id="admCalculationMonth" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 dark:[color-scheme:dark]">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1" for="admName">שם החישוב</label>
                             <input type="text" id="admName" placeholder="לדוגמה: יולי 2026 - שמירה" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
                         </div>
                         <div>
@@ -206,7 +214,8 @@
                     <table class="w-full text-xs text-right">
                         <thead class="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 uppercase sticky top-0 z-10">
                             <tr>
-                                <th class="p-3">שם פרופיל</th>
+                                <th class="p-3">משתמש</th>
+                                <th class="p-3">חודש</th>
                                 <th class="p-3">בסיס לשעה</th>
                                 <th class="p-3">פנסיה</th>
                                 <th class="p-3">השתלמות</th>
@@ -975,6 +984,8 @@
                     {
                         id: "profile_june_2026",
                         name: "מזרחי ראם - יוני 2026 (בסיס 54.97)",
+                        userName: "מזרחי ראם",
+                        calculationMonth: "2026-06",
                         hourlyRate: 54.97,
                         creditPoints: 4.25,
                         travelFixed: 272.00,
@@ -1070,6 +1081,9 @@
             activeProfile.kerenHishtalmutRate = parseFloat(elements.kerenHishtalmutRate.value) || 0;
             activeProfile.hasDmiTipul = elements.hasDmiTipul.checked;
             activeProfile.dmiTipulRate = parseFloat(elements.dmiTipulRate.value) || 0;
+            activeProfile.calculationMonth = activeProfile.calculationMonth || inferMonthFromShifts(shifts) || new Date().toISOString().slice(0, 7);
+            activeProfile.userName = activeProfile.userName || activeProfile.name || "משתמש";
+            activeProfile.savedAt = new Date().toISOString();
             activeProfile.shifts = shifts;
 
             const idx = profiles.findIndex(p => p.id === activeProfile.id);
@@ -1139,7 +1153,7 @@
                 
                 localStorage.setItem('salary_calculator_active_profile_id', found.id);
                 
-                document.getElementById('navActiveProfileName').textContent = `פרופיל פעיל: ${found.name}`;
+                document.getElementById('navActiveProfileName').textContent = `משתמש פעיל: ${found.userName || found.name} | חודש: ${found.calculationMonth || inferMonthFromShifts(found.shifts) || 'ללא חודש'}`;
                 updateMainSlidersFromShifts();
                 renderShifts();
                 calculatePayroll();
@@ -1148,11 +1162,21 @@
         }
 
         let isAdminView = false;
+        let isAdminUnlocked = false;
         function toggleAdminView() {
             const viewSelection = document.getElementById('profileSelectionView');
             const viewAdmin = document.getElementById('profileAdminView');
             const title = document.getElementById('overlayTitle');
             const btnText = document.getElementById('btnAdminText');
+            
+            if (!isAdminView && !isAdminUnlocked) {
+                const pass = prompt("הזן סיסמת אדמין");
+                if (pass !== "255656") {
+                    showCustomAlert("גישה נדחתה", "סיסמת האדמין אינה נכונה.", false);
+                    return;
+                }
+                isAdminUnlocked = true;
+            }
             
             isAdminView = !isAdminView;
             if (isAdminView) {
@@ -1164,14 +1188,16 @@
             } else {
                 viewSelection.classList.remove('hidden');
                 viewAdmin.classList.add('hidden');
-                title.textContent = "בחר פרופיל עבודה";
+                title.textContent = "בחר משתמש וחודש";
                 if (btnText) btnText.textContent = "פאנל אדמין";
             }
         }
 
         async function submitProfileForm() {
             const id = document.getElementById('editProfileId').value;
-            const name = document.getElementById('admName').value.trim();
+            const userName = document.getElementById('admUserName').value.trim();
+            const calculationMonth = document.getElementById('admCalculationMonth').value || new Date().toISOString().slice(0, 7);
+            const name = document.getElementById('admName').value.trim() || `${userName} - ${calculationMonth}`;
             const hourlyRate = parseFloat(document.getElementById('admHourlyRate').value) || STUB_DEFAULTS.hourlyRate;
             const creditPoints = parseFloat(document.getElementById('admCreditPoints').value) || STUB_DEFAULTS.creditPoints;
             const travelFixed = parseFloat(document.getElementById('admTravelFixed').value) || 0;
@@ -1184,13 +1210,13 @@
             const hasDmiTipul = document.getElementById('admHasDmiTipul').checked;
             const dmiTipulRate = parseFloat(document.getElementById('admDmiTipulRate').value) || 0;
 
-            if (!name) {
-                showCustomAlert("שגיאה", "אנא הזן שם מלא עבור הפרופיל", false);
+            if (!userName) {
+                showCustomAlert("שגיאה", "אנא הזן שם משתמש עבור החישוב", false);
                 return;
             }
 
             const profileData = {
-                name, hourlyRate, creditPoints, travelFixed, travelDaily, foodAllowance,
+                name, userName, calculationMonth, savedAt: new Date().toISOString(), hourlyRate, creditPoints, travelFixed, travelDaily, foodAllowance,
                 convalescenceUnits, pensionRate, hasKerenHishtalmut, kerenHishtalmutRate,
                 hasDmiTipul, dmiTipulRate, shifts: id ? (profiles.find(p => p.id === id)?.shifts || []) : []
             };
@@ -1198,7 +1224,7 @@
             if (id) profileData.id = id;
 
             await createOrUpdateProfile(profileData);
-            showCustomAlert("הצלחה", "הפרופיל נשמר ועודכן בהצלחה!");
+            showCustomAlert("הצלחה", "החישוב החודשי נשמר ועודכן בהצלחה!");
             cancelFormEdit();
         }
 
@@ -1207,9 +1233,11 @@
             if (!p) return;
 
             document.getElementById('editProfileId').value = p.id;
+            document.getElementById('admUserName').value = p.userName || p.name || '';
+            document.getElementById('admCalculationMonth').value = p.calculationMonth || inferMonthFromShifts(p.shifts) || new Date().toISOString().slice(0, 7);
             document.getElementById('admName').value = p.name || '';
             document.getElementById('admHourlyRate').value = p.hourlyRate ?? 54.97;
-            document.getElementById('admCreditPoints').value = p.creditPoints ?? 2.25;
+            document.getElementById('admCreditPoints').value = p.creditPoints ?? STUB_DEFAULTS.creditPoints;
             document.getElementById('admTravelFixed').value = p.travelFixed ?? 272;
             document.getElementById('admTravelDaily').value = p.travelDaily ?? 11.30;
             document.getElementById('admFoodRate').value = p.foodAllowance ?? 4.00;
@@ -1220,12 +1248,14 @@
             document.getElementById('admHasDmiTipul').checked = p.hasDmiTipul ?? true;
             document.getElementById('admDmiTipulRate').value = p.dmiTipulRate ?? 0.75;
 
-            document.getElementById('formActionTitle').querySelector('span').textContent = "ערוך פרופיל עבודה קיים";
+            document.getElementById('formActionTitle').querySelector('span').textContent = "ערוך חישוב חודשי קיים";
             document.getElementById('btnCancelEdit').classList.remove('hidden');
         }
 
         function cancelFormEdit() {
             document.getElementById('editProfileId').value = '';
+            document.getElementById('admUserName').value = '';
+            document.getElementById('admCalculationMonth').value = new Date().toISOString().slice(0, 7);
             document.getElementById('admName').value = '';
             document.getElementById('admHourlyRate').value = "54.97";
             document.getElementById('admCreditPoints').value = "4.25";
@@ -1239,7 +1269,7 @@
             document.getElementById('admHasDmiTipul').checked = true;
             document.getElementById('admDmiTipulRate').value = "0.75";
 
-            document.getElementById('formActionTitle').querySelector('span').textContent = "צור פרופיל עבודה חדש";
+            document.getElementById('formActionTitle').querySelector('span').textContent = "צור חישוב חודשי חדש";
             document.getElementById('btnCancelEdit').classList.add('hidden');
         }
 
@@ -1251,6 +1281,12 @@
                 await apiDeleteProfile(id);
                 showCustomAlert("מחיקה", "הפרופיל נמחק בהצלחה מהרשימה.");
             }
+        }
+
+        function inferMonthFromShifts(profileShifts) {
+            if (!Array.isArray(profileShifts) || profileShifts.length === 0) return '';
+            const datedShift = profileShifts.find(s => typeof s.date === 'string' && /^\d{4}-\d{2}/.test(s.date));
+            return datedShift ? datedShift.date.slice(0, 7) : '';
         }
 
         function renderProfilesGrid() {
@@ -1266,6 +1302,8 @@
                 const hRate = parseFloat(p.hourlyRate) || 0;
                 const credPts = parseFloat(p.creditPoints) || 0;
                 const shiftsCount = Array.isArray(p.shifts) ? p.shifts.length : 0;
+                const userName = p.userName || p.name || 'משתמש ללא שם';
+                const calculationMonth = p.calculationMonth || inferMonthFromShifts(p.shifts) || 'ללא חודש';
 
                 const card = document.createElement('div');
                 card.className = "bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 cursor-pointer transition-all duration-300 flex flex-col justify-between gap-4";
@@ -1273,7 +1311,10 @@
                 
                 card.innerHTML = `
                     <div class="space-y-2">
-                        <div class="font-bold text-slate-900 dark:text-white text-sm">${p.name || 'ללא שם'}</div>
+                        <div class="font-bold text-slate-900 dark:text-white text-sm">${userName}</div>
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                            חודש: <strong class="text-slate-800 dark:text-white">${calculationMonth}</strong> | חישוב: <strong class="text-slate-800 dark:text-white">${p.name || 'ללא שם'}</strong>
+                        </div>
                         <div class="text-[11px] text-slate-500 dark:text-slate-400">
                             תעריף שעה: <strong class="text-slate-800 dark:text-white">₪${hRate.toFixed(2)}</strong> | 
                             נקודות זיכוי: <strong class="text-slate-800 dark:text-white">${credPts}</strong>
@@ -1282,7 +1323,7 @@
                     <div class="flex items-center justify-between border-t border-slate-200 dark:border-slate-700/60 pt-3 text-[10px] text-slate-400">
                         <span>משמרות שמורות: <strong>${shiftsCount}</strong></span>
                         <span class="text-brand-600 dark:text-brand-400 font-bold flex items-center gap-0.5">
-                            טען פרופיל
+                            טען חישוב
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
                         </span>
                     </div>
@@ -1301,11 +1342,14 @@
                 const hRate = parseFloat(p.hourlyRate) || 0;
                 const pRate = parseFloat(p.pensionRate) || 0;
                 const isKeren = p.hasKerenHishtalmut ? p.kerenHishtalmutRate + '%' : 'ללא';
+                const userName = p.userName || p.name || '';
+                const calculationMonth = p.calculationMonth || inferMonthFromShifts(p.shifts) || '';
 
                 const row = document.createElement('tr');
                 row.className = "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-800/50";
                 row.innerHTML = `
-                    <td class="p-3 font-semibold text-slate-900 dark:text-white text-xs">${p.name || ''}</td>
+                    <td class="p-3 font-semibold text-slate-900 dark:text-white text-xs">${userName}</td>
+                    <td class="p-3 text-xs font-mono text-slate-700 dark:text-slate-300">${calculationMonth}</td>
                     <td class="p-3 text-xs font-mono text-slate-700 dark:text-slate-300">₪${hRate.toFixed(2)}</td>
                     <td class="p-3 text-xs text-slate-700 dark:text-slate-300">${pRate}%</td>
                     <td class="p-3 text-xs text-slate-700 dark:text-slate-300">${isKeren}</td>
