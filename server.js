@@ -186,6 +186,22 @@ app.post('/api/users', (req, res) => {
     res.status(201).json(user);
 });
 
+app.delete('/api/users/:id', (req, res) => {
+    const users = readUsers();
+    const user = users.find(u => u.id === req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const profiles = readProfiles();
+    const hasCalculations = profiles.some(p => (p.userName || p.name) === user.name);
+    if (hasCalculations) {
+        return res.status(409).json({ error: "Cannot delete user with existing calculations" });
+    }
+
+    const nextUsers = users.filter(u => u.id !== req.params.id);
+    writeUsers(nextUsers);
+    res.json({ message: "User deleted successfully" });
+});
+
 app.get('/api/deleted-profiles', (req, res) => {
     res.json(readDeletedProfiles());
 });

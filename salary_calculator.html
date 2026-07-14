@@ -1402,6 +1402,29 @@
             showCustomAlert("הצלחה", "המשתמש נוצר בהצלחה");
         }
 
+        async function deleteAdminUser(id, name) {
+            const count = profiles.filter(p => getProfileUserName(p) === name).length;
+            if (count > 0) {
+                showCustomAlert("לא ניתן למחוק", "יש למשתמש חישובים חודשיים. מחק או העבר אותם לפני מחיקת המשתמש.", false);
+                return;
+            }
+            if (!confirm(`האם למחוק את המשתמש ${name}?`)) return;
+
+            if (isServerOnline) {
+                try {
+                    const response = await fetchWithTimeout(`${API_BASE_URL}/api/users/${id}`, { method: 'DELETE', timeout: 4000 });
+                    if (!response.ok) throw new Error("Could not delete user");
+                } catch (e) {
+                    showCustomAlert("שגיאה", "לא ניתן היה למחוק את המשתמש מהשרת", false);
+                    return;
+                }
+            }
+            users = users.filter(u => u.id !== id && u.name !== name);
+            renderAdminUsersList();
+            renderProfilesGrid();
+            showCustomAlert("נמחק", "המשתמש נמחק בהצלחה");
+        }
+
         async function createMonthForSelectedUser() {
             if (!selectedUserNameForSelection) return;
             const monthInput = document.getElementById('newUserMonthInput');
@@ -1593,8 +1616,14 @@
                 .forEach(u => {
                     const item = document.createElement('div');
                     const count = profiles.filter(p => getProfileUserName(p) === u.name).length;
-                    item.className = "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs flex items-center justify-between";
-                    item.innerHTML = `<span class="font-bold text-slate-900 dark:text-white">${u.name}</span><span class="text-slate-400">${count} חודשים</span>`;
+                    item.className = "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs flex items-center justify-between gap-3";
+                    item.innerHTML = `
+                        <span class="font-bold text-slate-900 dark:text-white">${u.name}</span>
+                        <span class="flex items-center gap-3">
+                            <span class="text-slate-400">${count} חודשים</span>
+                            <button onclick="deleteAdminUser('${u.id}', '${String(u.name).replace(/'/g, "\\'")}')" class="text-rose-500 hover:text-rose-600 font-bold ${count > 0 ? 'opacity-40 cursor-not-allowed' : ''}">מחק</button>
+                        </span>
+                    `;
                     list.appendChild(item);
                 });
         }
