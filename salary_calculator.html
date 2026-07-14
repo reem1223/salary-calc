@@ -124,6 +124,17 @@
 
             <!-- Profile List Container -->
             <div id="profileSelectionView" class="space-y-4">
+                <div id="userSearchContainer" class="space-y-3">
+                    <input type="search" id="userSearchInput" oninput="renderProfilesGrid()" placeholder="חפש משתמש..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <p class="text-[11px] text-slate-400 dark:text-slate-500">המשתמשים מסודרים לפי א-ת. בחר משתמש כדי לראות חודשים שמורים.</p>
+                </div>
+                <div id="selectedUserHeader" class="hidden items-center justify-between bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-2xl p-4">
+                    <div>
+                        <div class="text-[11px] text-slate-400 dark:text-slate-500 font-semibold">משתמש נבחר</div>
+                        <div id="selectedUserNameText" class="text-sm font-extrabold text-slate-900 dark:text-white"></div>
+                    </div>
+                    <button onclick="backToUserSelection()" class="text-xs bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white px-4 py-2 rounded-xl font-bold transition-colors">חזרה למשתמשים</button>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="profilesGrid">
                     <!-- Dynamic Profiles Cards injected here -->
                 </div>
@@ -815,6 +826,7 @@
         // Global State variables
         let activeProfile = null;
         let profiles = [];
+        let selectedUserNameForSelection = null;
         let isServerOnline = false;
 
         // Shift Timer & Cumulative State
@@ -1108,6 +1120,7 @@
         }
 
         function openProfileSelection() {
+            selectedUserNameForSelection = null;
             document.getElementById('profileOverlay').classList.remove('hidden');
             document.getElementById('profileSelectionView').classList.remove('hidden');
             document.getElementById('profileAdminView').classList.add('hidden');
@@ -1289,47 +1302,115 @@
             return datedShift ? datedShift.date.slice(0, 7) : '';
         }
 
+        function selectUserForMonthSelection(userName) {
+            selectedUserNameForSelection = userName;
+            renderProfilesGrid();
+        }
+
+        function backToUserSelection() {
+            selectedUserNameForSelection = null;
+            renderProfilesGrid();
+        }
+
+        function getProfileUserName(profile) {
+            return profile.userName || profile.name || 'משתמש ללא שם';
+        }
+
         function renderProfilesGrid() {
             const grid = document.getElementById('profilesGrid');
             const loadingMsg = document.getElementById('loadingProfilesMessage');
+            const userSearchContainer = document.getElementById('userSearchContainer');
+            const selectedUserHeader = document.getElementById('selectedUserHeader');
+            const selectedUserNameText = document.getElementById('selectedUserNameText');
             
             loadingMsg.classList.add('hidden');
             grid.innerHTML = '';
             
             if (!Array.isArray(profiles)) profiles = [];
 
-            profiles.forEach(p => {
-                const hRate = parseFloat(p.hourlyRate) || 0;
-                const credPts = parseFloat(p.creditPoints) || 0;
-                const shiftsCount = Array.isArray(p.shifts) ? p.shifts.length : 0;
-                const userName = p.userName || p.name || 'משתמש ללא שם';
-                const calculationMonth = p.calculationMonth || inferMonthFromShifts(p.shifts) || 'ללא חודש';
+            if (!selectedUserNameForSelection) {
+                userSearchContainer.classList.remove('hidden');
+                selectedUserHeader.classList.add('hidden');
+                selectedUserHeader.classList.remove('flex');
 
-                const card = document.createElement('div');
-                card.className = "bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 cursor-pointer transition-all duration-300 flex flex-col justify-between gap-4";
-                card.onclick = () => selectProfile(p.id);
-                
-                card.innerHTML = `
-                    <div class="space-y-2">
-                        <div class="font-bold text-slate-900 dark:text-white text-sm">${userName}</div>
-                        <div class="text-[11px] text-slate-500 dark:text-slate-400">
-                            חודש: <strong class="text-slate-800 dark:text-white">${calculationMonth}</strong> | חישוב: <strong class="text-slate-800 dark:text-white">${p.name || 'ללא שם'}</strong>
+                const searchTerm = (document.getElementById('userSearchInput')?.value || '').trim().toLocaleLowerCase('he');
+                const userMap = new Map();
+
+                profiles.forEach(p => {
+                    const userName = getProfileUserName(p);
+                    if (!userMap.has(userName)) {
+                        userMap.set(userName, { userName, count: 0, months: [] });
+                    }
+                    const entry = userMap.get(userName);
+                    entry.count += 1;
+                    entry.months.push(p.calculationMonth || inferMonthFromShifts(p.shifts) || 'ללא חודש');
+                });
+
+                Array.from(userMap.values())
+                    .filter(u => u.userName.toLocaleLowerCase('he').includes(searchTerm))
+                    .sort((a, b) => a.userName.localeCompare(b.userName, 'he'))
+                    .forEach(u => {
+                        const monthsText = Array.from(new Set(u.months)).sort((a, b) => b.localeCompare(a, 'he')).join(', ');
+                        const card = document.createElement('div');
+                        card.className = "bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 cursor-pointer transition-all duration-300 flex flex-col justify-between gap-4";
+                        card.onclick = () => selectUserForMonthSelection(u.userName);
+                        card.innerHTML = `
+                            <div class="space-y-2">
+                                <div class="font-bold text-slate-900 dark:text-white text-base">${u.userName}</div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">חישובים שמורים: <strong class="text-slate-800 dark:text-white">${u.count}</strong></div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">חודשים: ${monthsText || 'אין חודשים'}</div>
+                            </div>
+                            <div class="flex items-center justify-between border-t border-slate-200 dark:border-slate-700/60 pt-3 text-[10px] text-slate-400">
+                                <span>מסודר לפי א-ת</span>
+                                <span class="text-brand-600 dark:text-brand-400 font-bold flex items-center gap-0.5">בחר משתמש</span>
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                    });
+
+                if (!grid.children.length) {
+                    grid.innerHTML = '<div class="md:col-span-2 py-10 text-center text-sm text-slate-400 dark:text-slate-500">לא נמצאו משתמשים תואמים.</div>';
+                }
+                return;
+            }
+
+            userSearchContainer.classList.add('hidden');
+            selectedUserHeader.classList.remove('hidden');
+            selectedUserHeader.classList.add('flex');
+            selectedUserNameText.textContent = selectedUserNameForSelection;
+
+            profiles
+                .filter(p => getProfileUserName(p) === selectedUserNameForSelection)
+                .sort((a, b) => {
+                    const aMonth = a.calculationMonth || inferMonthFromShifts(a.shifts) || '';
+                    const bMonth = b.calculationMonth || inferMonthFromShifts(b.shifts) || '';
+                    return bMonth.localeCompare(aMonth, 'he');
+                })
+                .forEach(p => {
+                    const hRate = parseFloat(p.hourlyRate) || 0;
+                    const credPts = parseFloat(p.creditPoints) || 0;
+                    const shiftsCount = Array.isArray(p.shifts) ? p.shifts.length : 0;
+                    const calculationMonth = p.calculationMonth || inferMonthFromShifts(p.shifts) || 'ללא חודש';
+
+                    const card = document.createElement('div');
+                    card.className = "bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 cursor-pointer transition-all duration-300 flex flex-col justify-between gap-4";
+                    card.onclick = () => selectProfile(p.id);
+                    card.innerHTML = `
+                        <div class="space-y-2">
+                            <div class="font-bold text-slate-900 dark:text-white text-sm">${calculationMonth}</div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400">חישוב: <strong class="text-slate-800 dark:text-white">${p.name || 'ללא שם'}</strong></div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                                תעריף שעה: <strong class="text-slate-800 dark:text-white">₪${hRate.toFixed(2)}</strong> | 
+                                נקודות זיכוי: <strong class="text-slate-800 dark:text-white">${credPts}</strong>
+                            </div>
                         </div>
-                        <div class="text-[11px] text-slate-500 dark:text-slate-400">
-                            תעריף שעה: <strong class="text-slate-800 dark:text-white">₪${hRate.toFixed(2)}</strong> | 
-                            נקודות זיכוי: <strong class="text-slate-800 dark:text-white">${credPts}</strong>
+                        <div class="flex items-center justify-between border-t border-slate-200 dark:border-slate-700/60 pt-3 text-[10px] text-slate-400">
+                            <span>משמרות שמורות: <strong>${shiftsCount}</strong></span>
+                            <span class="text-brand-600 dark:text-brand-400 font-bold flex items-center gap-0.5">טען חודש</span>
                         </div>
-                    </div>
-                    <div class="flex items-center justify-between border-t border-slate-200 dark:border-slate-700/60 pt-3 text-[10px] text-slate-400">
-                        <span>משמרות שמורות: <strong>${shiftsCount}</strong></span>
-                        <span class="text-brand-600 dark:text-brand-400 font-bold flex items-center gap-0.5">
-                            טען חישוב
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
-                        </span>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+                    `;
+                    grid.appendChild(card);
+                });
         }
 
         function renderAdminProfilesTable() {
