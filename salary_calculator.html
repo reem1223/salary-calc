@@ -156,7 +156,8 @@
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1" for="admCreditPoints">נקודות זיכוי מס</label>
-                            <input type="number" id="admCreditPoints" step="0.25" value="2.25" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <input type="number" id="admCreditPoints" step="0.25" value="4.25" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <p class="mt-1 text-[10px] text-slate-400 dark:text-slate-500">בסיס רגיל: 2.25 נק׳. ברירת המחדל כוללת תוספת לפי התלושים.</p>
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1" for="admTravelFixed">נסיעות גלובלי (₪)</label>
@@ -634,7 +635,7 @@
                             <span id="outRawIncomeTax" class="font-mono text-slate-800 dark:text-white">₪0.00</span>
                         </div>
                         <div class="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
-                            <span>נקודות זיכוי (2.25 נק' = ₪544.50):</span>
+                            <span id="creditPointsDiscountLabel">נקודות זיכוי (בסיס: 2.25 נק'):</span>
                             <span id="outCreditPointsDiscount" class="font-mono">-₪0.00</span>
                         </div>
                         <div class="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
@@ -794,7 +795,7 @@
             foodAllowance: 4.00, 
             convalescenceUnits: 0.41, 
             convalescenceRate: 511.60, 
-            creditPoints: 2.25,
+            creditPoints: 4.25,
             hasKerenHishtalmut: true,
             kerenHishtalmutRate: 2.5,
             pensionRate: 7.0, 
@@ -975,7 +976,7 @@
                         id: "profile_june_2026",
                         name: "מזרחי ראם - יוני 2026 (בסיס 54.97)",
                         hourlyRate: 54.97,
-                        creditPoints: 2.25,
+                        creditPoints: 4.25,
                         travelFixed: 272.00,
                         travelDaily: 11.30,
                         foodAllowance: 4.00,
@@ -1227,7 +1228,7 @@
             document.getElementById('editProfileId').value = '';
             document.getElementById('admName').value = '';
             document.getElementById('admHourlyRate').value = "54.97";
-            document.getElementById('admCreditPoints').value = "2.25";
+            document.getElementById('admCreditPoints').value = "4.25";
             document.getElementById('admTravelFixed').value = "272.00";
             document.getElementById('admTravelDaily').value = "11.30";
             document.getElementById('admFoodRate').value = "4.00";
@@ -1782,6 +1783,7 @@
 
             const creditPointValue = 242.00; 
             const pointsValue = creditPoints * creditPointValue;
+            document.getElementById('creditPointsDiscountLabel').textContent = `נקודות זיכוי (${creditPoints.toFixed(2)} נק' | בסיס: 2.25 = ${formatILS(2.25 * creditPointValue)}):`;
             const sec45Credit = pensionEmployee * 0.35;
             const finalIncomeTax = Math.max(0, rawIncomeTax - pointsValue - sec45Credit);
 
