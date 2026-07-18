@@ -3,6 +3,8 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const multer = require('multer');
+const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
 const { Pool } = require('pg');
 
 const app = express();
@@ -19,6 +21,7 @@ const pool = process.env.DATABASE_URL ? new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 }) : null;
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 let databaseReady = false;
 let databaseInitError = null;
 function useDatabase() {
@@ -54,6 +57,80 @@ function publicUser(user) {
     const { passwordHash, password_hash, ...safeUser } = user;
     return { ...safeUser, hasPassword: Boolean(passwordHash || password_hash) };
 }
+function normalizePayslipText(text) {
+    return String(text || '').replace(/\s+/g, ' ').trim();
+}
+function numberFromText(value) {
+    if (!value) return null;
+    const normalized = String(value).replace(/,/g, '').replace(/₪/g, '').trim();
+    const match = normalized.match(/-?\d+(?:\.\d+)?/);
+    return match ? Number(match[0]) : null;
+}
+function findNumberAfter(text, labels) {
+    for (const label of labels) {
+        const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const match = text.match(new RegExp(`${escaped}[^\d-]{0,40}(-?\\d[\\d,.]*)`, 'i'));
+        const value = numberFromText(match?.[1]);
+        if (value !== null) return value;
+    }
+    return null;
+}
+function findMonth(text) {
+    const numeric = text.match(/(?:20\d{2})[-/.](0?[1-9]|1[0-2])|(?:0?[1-9]|1[0-2])[-/.](20\d{2})/);
+    if (numeric) {
+        const parts = numeric[0].split(/[-/.]/);
+        const year = parts[0].length === 4 ? parts[0] : parts[1];
+        const month = (parts[0].length === 4 ? parts[1] : parts[0]).padStart(2, '0');
+        return `${year}-${month}`;
+    }
+    const hebrewMonths = { ינואר: '01', פברואר: '02', מרץ: '03', אפריל: '04', מאי: '05', יוני: '06', יולי: '07', אוגוסט: '08', ספטמבר: '09', אוקטובר: '10', נובמבר: '11', דצמבר: '12' };
+    for (const [name, month] of Object.entries(hebrewMonths)) {
+        const match = text.match(new RegExp(`${name}[^0-9]{0,20}(20\\d{2})`));
+        if (match) return `${match[1]}-${month}`;
+    }
+    return new Date().toISOString().slice(0, 7);
+}
+function extractPayslipData(text, userName) {
+    const normalized = normalizePayslipText(text);
+    const calculationMonth = findMonth(normalized);
+    const hourlyRate = findNumberAfter(normalized, ['תעריף שעה', 'שכר שעה', 'ערך שעה', 'שכר לשעה']) || 54.97;
+    const travelFixed = findNumberAfter(normalized, ['נסיעות', 'החזר נסיעות']) || 0;
+    const foodAllowance = findNumberAfter(normalized, ['אוכל', 'ארוחות', 'כלכלה']) || 0;
+    const convalescenceUnits = findNumberAfter(normalized, ['הבראה', 'דמי הבראה']) || 0;
+    const pensionRate = findNumberAfter(normalized, ['פנסיה עובד', 'תגמולים עובד', 'פנסיה']) || 7;
+    const kerenHishtalmutRate = findNumberAfter(normalized, ['השתלמות עובד', 'קרן השתלמות']) || 0;
+    const dmiTipulRate = findNumberAfter(normalized, ['דמי טיפול']) || 0;
+    return {
+        name: `${userName} - ${calculationMonth}`,
+        userName,
+        calculationMonth,
+        savedAt: new Date().toISOString(),
+        hourlyRate,
+        creditPoints: findNumberAfter(normalized, ['נקודות זיכוי', 'נק זיכוי']) || 4.25,
+        travelFixed,
+        travelDaily: 0,
+        foodAllowance,
+        convalescenceUnits,
+        pensionRate,
+        hasKerenHishtalmut: kerenHishtalmutRate > 0,
+        kerenHishtalmutRate,
+        hasDmiTipul: dmiTipulRate > 0,
+        dmiTipulRate,
+        shifts: [],
+        importedFromPdf: true
+    };
+}
+async function extractPdfText(buffer, password) {
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer), password, useWorkerFetch: false, isEvalSupported: false, disableFontFace: true });
+    const pdf = await loadingTask.promise;
+    const pages = [];
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+        const page = await pdf.getPage(pageNum);
+        const content = await page.getTextContent();
+        pages.push(content.items.map(item => item.str).join(' '));
+    }
+    return pages.join(' ');
+}
 
 app.use(cors());
 app.use(express.json());
@@ -75,6 +152,21 @@ app.get('/api/health', (req, res) => {
         databaseReady,
         databaseError: databaseInitError
     });
+});
+
+app.post('/api/extract-payslip', upload.single('pdf'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'PDF file is required' });
+        const password = String(req.body.password || '');
+        const userName = String(req.body.userName || '').trim();
+        if (!password) return res.status(400).json({ error: 'PDF password is required' });
+        if (!userName) return res.status(400).json({ error: 'User name is required' });
+        const text = await extractPdfText(req.file.buffer, password);
+        res.json({ profile: extractPayslipData(text, userName) });
+    } catch (e) {
+        const message = e?.name === 'PasswordException' ? 'Wrong or missing PDF password' : 'Could not extract PDF data';
+        res.status(400).json({ error: message });
+    }
 });
 
 // Helper function to read profiles from file

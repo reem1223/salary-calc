@@ -136,6 +136,8 @@
                     <div class="flex items-center gap-2">
                         <input type="month" id="newUserMonthInput" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 dark:[color-scheme:dark]">
                         <button onclick="createMonthForSelectedUser()" class="text-xs bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl font-bold transition-colors">צור חודש</button>
+                        <input type="file" id="payslipPdfInput" accept="application/pdf" class="hidden" onchange="uploadPayslipForSelectedUser(event)">
+                        <button onclick="document.getElementById('payslipPdfInput').click()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-bold transition-colors">העלה PDF</button>
                         <button onclick="backToUserSelection()" class="text-xs bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white px-4 py-2 rounded-xl font-bold transition-colors">חזרה למשתמשים</button>
                     </div>
                 </div>
@@ -1465,6 +1467,36 @@
             await createOrUpdateProfile(profileData);
             selectedUserNameForSelection = profileData.userName;
             showCustomAlert("הצלחה", "חישוב חודשי חדש נוצר בהצלחה");
+        }
+
+        async function uploadPayslipForSelectedUser(event) {
+            const input = event.target;
+            const file = input.files && input.files[0];
+            input.value = '';
+            if (!file || !selectedUserNameForSelection) return;
+            const password = prompt('הזן את סיסמת קובץ ה-PDF');
+            if (!password) return;
+            const formData = new FormData();
+            formData.append('pdf', file);
+            formData.append('password', password);
+            formData.append('userName', selectedUserNameForSelection);
+            try {
+                const response = await fetchWithTimeout(`${API_BASE_URL}/api/extract-payslip`, {
+                    method: 'POST',
+                    body: formData,
+                    timeout: 20000
+                });
+                if (!response.ok) throw new Error('Could not extract payslip');
+                const result = await response.json();
+                const profileData = result.profile;
+                const existing = profiles.find(p => getProfileUserName(p) === selectedUserNameForSelection && (p.calculationMonth || inferMonthFromShifts(p.shifts)) === profileData.calculationMonth);
+                if (existing && !confirm('כבר קיים חישוב לחודש הזה. ליצור חישוב נוסף בכל זאת?')) return;
+                await createOrUpdateProfile(profileData);
+                selectedUserNameForSelection = profileData.userName;
+                showCustomAlert('הצלחה', 'ה-PDF נקרא והחישוב נשמר. בדוק את הערכים וערוך במידת הצורך.');
+            } catch (e) {
+                showCustomAlert('שגיאה', 'לא ניתן היה לקרוא את ה-PDF. בדוק שהסיסמה נכונה ושהקובץ הוא תלוש תקין.', false);
+            }
         }
 
         async function restoreDeletedProfile(id) {
