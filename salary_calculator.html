@@ -1249,11 +1249,21 @@
                 elements.kerenHishtalmutRate.value = found.kerenHishtalmutRate ?? STUB_DEFAULTS.kerenHishtalmutRate;
                 elements.hasDmiTipul.checked = found.hasDmiTipul ?? STUB_DEFAULTS.hasDmiTipul;
                 elements.dmiTipulRate.value = found.dmiTipulRate ?? STUB_DEFAULTS.dmiTipulRate;
+                if (found.importedTotals && (!found.shifts || found.shifts.length === 0)) {
+                    elements.regularHours.value = found.importedTotals.regularHours || 0;
+                    elements.ot125Hours.value = found.importedTotals.ot125Hours || 0;
+                    elements.ot150Hours.value = found.importedTotals.ot150Hours || 0;
+                    elements.shabbatHours.value = found.importedTotals.shabbatHours || 0;
+                    updateRangeText('regularHours');
+                    updateRangeText('ot125Hours');
+                    updateRangeText('ot150Hours');
+                    updateRangeText('shabbatHours');
+                }
                 
                 localStorage.setItem('salary_calculator_active_profile_id', found.id);
                 
                 document.getElementById('navActiveProfileName').textContent = `משתמש פעיל: ${found.userName || found.name} | חודש: ${found.calculationMonth || inferMonthFromShifts(found.shifts) || 'ללא חודש'}`;
-                updateMainSlidersFromShifts();
+                if (!found.importedTotals || (found.shifts && found.shifts.length > 0)) updateMainSlidersFromShifts();
                 renderShifts();
                 calculatePayroll();
                 closeOverlay();
@@ -2175,7 +2185,8 @@
             
             const uniqueWorkingDays = new Set(shifts.map(s => s.date)).size;
             const dynamicTravelDaily = uniqueWorkingDays * travelDaily;
-            const travelPay = travelFixed + dynamicTravelDaily;
+            const importedTotals = activeProfile?.importedTotals && (!shifts || shifts.length === 0) ? activeProfile.importedTotals : null;
+            const travelPay = importedTotals ? (parseFloat(importedTotals.travelPay) || 0) : travelFixed + dynamicTravelDaily;
             
             let eligibleFoodHours = 0;
             shifts.forEach(s => {
@@ -2183,11 +2194,11 @@
                     eligibleFoodHours += parseFloat(s.hours) || 0;
                 }
             });
-            const foodPay = eligibleFoodHours * foodAllowanceRate;
+            const foodPay = importedTotals ? (parseFloat(importedTotals.foodPay) || 0) : eligibleFoodHours * foodAllowanceRate;
             
             const convalescencePay = convalescenceUnits * STUB_DEFAULTS.convalescenceRate;
 
-            const grossTotal = regularPay + ot125Pay + ot150Pay + shabbatPay + travelPay + foodPay + convalescencePay;
+            const grossTotal = importedTotals?.grossTotal || (regularPay + ot125Pay + ot150Pay + shabbatPay + travelPay + foodPay + convalescencePay);
 
             elements.outRegularPay.textContent = formatILS(regularPay);
             elements.outOt125Pay.textContent = formatILS(ot125Pay);
