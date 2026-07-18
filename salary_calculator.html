@@ -444,6 +444,9 @@
                     </div>
 
                     <!-- Shifts List / Table -->
+                    <div id="pdfImportedShiftsNote" class="hidden mb-3 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-xs font-bold text-amber-800 dark:text-amber-200">
+                        חישוב למשמרות מPDF יוצר משמרות פיקטיביות (אין להשוות אותם ללו"ז המקורי)
+                    </div>
                     <div class="overflow-x-auto max-h-[600px] overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-xl transition-all">
                         <table class="w-full text-xs text-right">
                             <thead class="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 uppercase sticky top-0 z-10">
@@ -837,7 +840,7 @@
 
     <!-- JavaScript Logic Section -->
     <script>
-        const APP_VERSION = 'pdf-import-net-v4';
+        const APP_VERSION = 'pdf-shifts-note-v6';
         console.log('Salary calculator version:', APP_VERSION);
         const STUB_DEFAULTS = {
             hourlyRate: 54.97, 
@@ -2057,6 +2060,10 @@
         function renderShifts() {
             const tbody = document.getElementById('shiftsTableBody');
             const noShifts = document.getElementById('noShiftsMessage');
+            const pdfImportedShiftsNote = document.getElementById('pdfImportedShiftsNote');
+            if (pdfImportedShiftsNote) {
+                pdfImportedShiftsNote.classList.toggle('hidden', !activeProfile?.importedFromPdf);
+            }
             
             tbody.innerHTML = '';
             
@@ -2210,7 +2217,7 @@
             
             const convalescencePay = convalescenceUnits * STUB_DEFAULTS.convalescenceRate;
 
-            const grossTotal = importedTotals?.grossTotal || (regularPay + ot125Pay + ot150Pay + shabbatPay + travelPay + foodPay + convalescencePay);
+            const grossTotal = importedTotals && importedTotals.grossTotal !== undefined ? parseFloat(importedTotals.grossTotal) : (regularPay + ot125Pay + ot150Pay + shabbatPay + travelPay + foodPay + convalescencePay);
 
             elements.outRegularPay.textContent = formatILS(regularPay);
             elements.outOt125Pay.textContent = formatILS(ot125Pay);
@@ -2227,11 +2234,11 @@
             const baseKerenHishtalmut = regularPay * 0.83673; 
             const kerenHishtalmutPay = hasKerenHishtalmut ? (baseKerenHishtalmut * kerenHishtalmutRate) : 0;
 
-            const importedSocialTotal = importedTotals?.socialTotal ? parseFloat(importedTotals.socialTotal) : null;
+            const importedSocialTotal = importedTotals && importedTotals.socialTotal !== undefined ? parseFloat(importedTotals.socialTotal) : null;
             const socialTotal = importedSocialTotal ?? (pensionEmployee + kerenHishtalmutPay);
 
-            elements.outPensionEmployee.textContent = importedSocialTotal ? formatILS(socialTotal) : formatILS(pensionEmployee);
-            elements.outKerenHishtalmut.textContent = importedSocialTotal ? formatILS(0) : formatILS(kerenHishtalmutPay);
+            elements.outPensionEmployee.textContent = importedSocialTotal !== null ? formatILS(socialTotal) : formatILS(pensionEmployee);
+            elements.outKerenHishtalmut.textContent = importedSocialTotal !== null ? formatILS(0) : formatILS(kerenHishtalmutPay);
             elements.outSocialTotal.textContent = formatILS(socialTotal);
 
             const brackets = [
@@ -2276,7 +2283,7 @@
                 }
             }
 
-            const creditPointValue = 242.00; 
+            const creditPointValue = 242.22; 
             const pointsValue = creditPoints * creditPointValue;
             document.getElementById('creditPointsDiscountLabel').textContent = `נקודות זיכוי (${creditPoints.toFixed(2)} נק' | בסיס: 2.25 = ${formatILS(2.25 * creditPointValue)}):`;
             const sec45Credit = pensionEmployee * 0.35;
@@ -2295,20 +2302,20 @@
             }
 
             const dmiTipul = hasDmiTipul ? (grossTotal * dmiTipulRate) : 0;
-            const importedTaxesTotal = importedTotals?.taxesTotal ? parseFloat(importedTotals.taxesTotal) : null;
+            const importedTaxesTotal = importedTotals && importedTotals.taxesTotal !== undefined ? parseFloat(importedTotals.taxesTotal) : null;
             const taxesTotal = importedTaxesTotal ?? (finalIncomeTax + natIns + healthIns + dmiTipul);
 
             document.getElementById('outRawIncomeTax').textContent = formatILS(rawIncomeTax);
             document.getElementById('outCreditPointsDiscount').textContent = `-${formatILS(pointsValue)}`;
             document.getElementById('outSec45Discount').textContent = `-${formatILS(sec45Credit)}`;
 
-            elements.outIncomeTax.textContent = importedTaxesTotal ? formatILS(taxesTotal) : formatILS(finalIncomeTax);
-            elements.outNationalIns.textContent = importedTaxesTotal ? formatILS(0) : formatILS(natIns);
-            elements.outHealthIns.textContent = importedTaxesTotal ? formatILS(0) : formatILS(healthIns);
-            elements.outDmiTipul.textContent = importedTaxesTotal ? formatILS(0) : formatILS(dmiTipul);
+            elements.outIncomeTax.textContent = importedTaxesTotal !== null ? formatILS(taxesTotal) : formatILS(finalIncomeTax);
+            elements.outNationalIns.textContent = importedTaxesTotal !== null ? formatILS(0) : formatILS(natIns);
+            elements.outHealthIns.textContent = importedTaxesTotal !== null ? formatILS(0) : formatILS(healthIns);
+            elements.outDmiTipul.textContent = importedTaxesTotal !== null ? formatILS(0) : formatILS(dmiTipul);
             elements.outTaxesTotal.textContent = formatILS(taxesTotal);
 
-            const netPay = importedTotals?.netPay ? parseFloat(importedTotals.netPay) : Math.max(0, grossTotal - taxesTotal - socialTotal);
+            const netPay = importedTotals && importedTotals.netPay !== undefined ? parseFloat(importedTotals.netPay) : Math.max(0, grossTotal - taxesTotal - socialTotal);
             elements.netResult.textContent = formatILS(netPay);
 
             updateThemeAccent(netPay);
