@@ -568,7 +568,9 @@ app.post('/api/profiles', async (req, res) => {
         kerenHishtalmutRate: parseFloat(req.body.kerenHishtalmutRate) || 2.5,
         hasDmiTipul: req.body.hasDmiTipul ?? true,
         dmiTipulRate: parseFloat(req.body.dmiTipulRate) || 0.75,
-        shifts: req.body.shifts || []
+        shifts: req.body.shifts || [],
+        importedTotals: req.body.importedTotals || null,
+        importedFromPdf: Boolean(req.body.importedFromPdf)
     };
     
         if (useDatabase()) {
@@ -609,7 +611,9 @@ app.put('/api/profiles/:id', async (req, res) => {
         kerenHishtalmutRate: Number.isNaN(parseFloat(req.body.kerenHishtalmutRate)) ? profiles[index].kerenHishtalmutRate : parseFloat(req.body.kerenHishtalmutRate),
         hasDmiTipul: req.body.hasDmiTipul ?? profiles[index].hasDmiTipul,
         dmiTipulRate: Number.isNaN(parseFloat(req.body.dmiTipulRate)) ? profiles[index].dmiTipulRate : parseFloat(req.body.dmiTipulRate),
-        shifts: Array.isArray(req.body.shifts) ? req.body.shifts : profiles[index].shifts
+        shifts: Array.isArray(req.body.shifts) ? req.body.shifts : profiles[index].shifts,
+        importedTotals: req.body.importedTotals ?? profiles[index].importedTotals ?? null,
+        importedFromPdf: req.body.importedFromPdf ?? profiles[index].importedFromPdf ?? false
     };
     
         if (useDatabase()) {
