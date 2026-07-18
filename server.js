@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 
 const app = express();
@@ -38,6 +39,20 @@ function cleanProfiles(profiles) {
 }
 function cleanUsers(users) {
     return Array.isArray(users) ? users.filter(user => !isSeedUser(user)) : [];
+}
+function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
+    const hash = crypto.pbkdf2Sync(String(password), salt, 100000, 64, 'sha512').toString('hex');
+    return `${salt}:${hash}`;
+}
+function verifyPassword(password, storedHash) {
+    if (!storedHash || !String(storedHash).includes(':')) return false;
+    const [salt, originalHash] = String(storedHash).split(':');
+    const checkHash = hashPassword(password, salt).split(':')[1];
+    return crypto.timingSafeEqual(Buffer.from(originalHash, 'hex'), Buffer.from(checkHash, 'hex'));
+}
+function publicUser(user) {
+    const { passwordHash, password_hash, ...safeUser } = user;
+    return { ...safeUser, hasPassword: Boolean(passwordHash || password_hash) };
 }
 
 app.use(cors());
@@ -153,6 +168,7 @@ async function initDatabase() {
         CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL UNIQUE,
+            password_hash TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
         CREATE TABLE IF NOT EXISTS calculations (
@@ -170,6 +186,7 @@ async function initDatabase() {
         );
     `);
 
+    await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT');
     await pool.query("DELETE FROM calculations WHERE id IN ('profile_june_2026', 'profile_feb_2026', 'profile_empty') OR name IN ('מזרחי ראם - יוני 2026 (בסיס 54.97)', 'מזרחי ראם - פברואר 2026 (בסיס 53.22)', 'סימולטור נקי (משמרות ריקות)')");
     await pool.query("DELETE FROM users WHERE name IN ('מזרחי ראם', 'משתמש חדש')");
 
@@ -207,8 +224,8 @@ function rowToProfile(row) {
 }
 
 async function dbReadUsers() {
-    const result = await pool.query('SELECT id, name, created_at AS "createdAt" FROM users ORDER BY name ASC');
-    return cleanUsers(result.rows);
+    const result = await pool.query('SELECT id, name, password_hash, created_at AS "createdAt" FROM users ORDER BY name ASC');
+    return cleanUsers(result.rows).map(publicUser);
 }
 
 async function dbReadProfiles() {
@@ -239,7 +256,7 @@ app.get('/api/users', async (req, res) => {
     try {
         if (useDatabase()) return res.json(await dbReadUsers());
         if (pool) return databaseUnavailable(res);
-        res.json(readUsers());
+        res.json(readUsers().map(publicUser));
     } catch (e) {
         res.status(500).json({ error: "Could not read users" });
     }
@@ -250,22 +267,79 @@ app.post('/api/users', async (req, res) => {
         const name = String(req.body.name || '').trim();
         if (!name) return res.status(400).json({ error: "User name is required" });
         if (useDatabase()) {
-            const existing = await pool.query('SELECT id, name, created_at AS "createdAt" FROM users WHERE name = $1', [name]);
-            if (existing.rows[0]) return res.json(existing.rows[0]);
+            const existing = await pool.query('SELECT id, name, password_hash, created_at AS "createdAt" FROM users WHERE name = $1', [name]);
+            if (existing.rows[0]) return res.json(publicUser(existing.rows[0]));
             const user = { id: 'user_' + Date.now(), name };
-            const inserted = await pool.query('INSERT INTO users (id, name) VALUES ($1, $2) RETURNING id, name, created_at AS "createdAt"', [user.id, user.name]);
-            return res.status(201).json(inserted.rows[0]);
+            const inserted = await pool.query('INSERT INTO users (id, name) VALUES ($1, $2) RETURNING id, name, password_hash, created_at AS "createdAt"', [user.id, user.name]);
+            return res.status(201).json(publicUser(inserted.rows[0]));
         }
         if (pool) return databaseUnavailable(res);
         const users = readUsers();
         const existing = users.find(u => u.name === name);
-        if (existing) return res.json(existing);
+        if (existing) return res.json(publicUser(existing));
         const user = { id: 'user_' + Date.now(), name, createdAt: new Date().toISOString() };
         users.push(user);
         writeUsers(users);
-        res.status(201).json(user);
+        res.status(201).json(publicUser(user));
     } catch (e) {
         res.status(500).json({ error: "Could not save user" });
+    }
+});
+
+app.post('/api/users/:id/password', async (req, res) => {
+    try {
+        const password = String(req.body.password || '');
+        if (password.length < 4) return res.status(400).json({ error: "Password must be at least 4 characters" });
+        if (useDatabase()) {
+            const updated = await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING id, name, password_hash, created_at AS "createdAt"', [hashPassword(password), req.params.id]);
+            if (!updated.rows[0]) return res.status(404).json({ error: "User not found" });
+            return res.json(publicUser(updated.rows[0]));
+        }
+        if (pool) return databaseUnavailable(res);
+        const users = readUsers();
+        const user = users.find(u => u.id === req.params.id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+        user.passwordHash = hashPassword(password);
+        writeUsers(users);
+        res.json(publicUser(user));
+    } catch (e) {
+        res.status(500).json({ error: "Could not set password" });
+    }
+});
+
+app.post('/api/users/:id/verify-password', async (req, res) => {
+    try {
+        const password = String(req.body.password || '');
+        if (useDatabase()) {
+            const found = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.params.id]);
+            if (!found.rows[0]) return res.status(404).json({ error: "User not found" });
+            return res.json({ ok: verifyPassword(password, found.rows[0].password_hash) });
+        }
+        if (pool) return databaseUnavailable(res);
+        const user = readUsers().find(u => u.id === req.params.id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+        res.json({ ok: verifyPassword(password, user.passwordHash) });
+    } catch (e) {
+        res.status(500).json({ error: "Could not verify password" });
+    }
+});
+
+app.delete('/api/users/:id/password', async (req, res) => {
+    try {
+        if (useDatabase()) {
+            const updated = await pool.query('UPDATE users SET password_hash = NULL WHERE id = $1 RETURNING id, name, password_hash, created_at AS "createdAt"', [req.params.id]);
+            if (!updated.rows[0]) return res.status(404).json({ error: "User not found" });
+            return res.json(publicUser(updated.rows[0]));
+        }
+        if (pool) return databaseUnavailable(res);
+        const users = readUsers();
+        const user = users.find(u => u.id === req.params.id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+        delete user.passwordHash;
+        writeUsers(users);
+        res.json(publicUser(user));
+    } catch (e) {
+        res.status(500).json({ error: "Could not clear password" });
     }
 });
 

@@ -1494,9 +1494,76 @@
             return datedShift ? datedShift.date.slice(0, 7) : '';
         }
 
-        function selectUserForMonthSelection(userName) {
+        function getUserByName(userName) {
+            return users.find(u => u.name === userName);
+        }
+
+        async function selectUserForMonthSelection(userName) {
+            const user = getUserByName(userName);
+            if (user?.hasPassword) {
+                const password = prompt('הזן סיסמה לפתיחת כרטיס המשתמש');
+                if (!password) return;
+                try {
+                    const response = await fetchWithTimeout(`${API_BASE_URL}/api/users/${user.id}/verify-password`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password }),
+                        timeout: 4000
+                    });
+                    const result = response.ok ? await response.json() : { ok: false };
+                    if (!result.ok) {
+                        showCustomAlert('סיסמה שגויה', 'לא ניתן לפתוח את כרטיס המשתמש ללא הסיסמה הנכונה.', false);
+                        return;
+                    }
+                } catch (e) {
+                    showCustomAlert('שגיאה', 'לא ניתן היה לאמת את הסיסמה מול השרת.', false);
+                    return;
+                }
+            }
             selectedUserNameForSelection = userName;
             renderProfilesGrid();
+        }
+
+        async function setUserPassword(id) {
+            const password = prompt('הזן סיסמה חדשה לכרטיס המשתמש');
+            if (!password) return;
+            if (password.length < 4) {
+                showCustomAlert('סיסמה קצרה מדי', 'הסיסמה חייבת להכיל לפחות 4 תווים.', false);
+                return;
+            }
+            try {
+                const response = await fetchWithTimeout(`${API_BASE_URL}/api/users/${id}/password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password }),
+                    timeout: 4000
+                });
+                if (!response.ok) throw new Error('Could not set password');
+                const updated = await response.json();
+                users = users.map(u => u.id === id ? updated : u);
+                saveUsersToCache();
+                renderProfilesGrid();
+                renderAdminUsersList();
+                showCustomAlert('ננעל', 'כרטיס המשתמש ננעל בסיסמה.');
+            } catch (e) {
+                showCustomAlert('שגיאה', 'לא ניתן היה לשמור סיסמה למשתמש.', false);
+            }
+        }
+
+        async function clearUserPassword(id) {
+            if (!confirm('האם למחוק את סיסמת המשתמש?')) return;
+            try {
+                const response = await fetchWithTimeout(`${API_BASE_URL}/api/users/${id}/password`, { method: 'DELETE', timeout: 4000 });
+                if (!response.ok) throw new Error('Could not clear password');
+                const updated = await response.json();
+                users = users.map(u => u.id === id ? updated : u);
+                saveUsersToCache();
+                renderProfilesGrid();
+                renderAdminUsersList();
+                showCustomAlert('נמחק', 'סיסמת המשתמש נמחקה.');
+            } catch (e) {
+                showCustomAlert('שגיאה', 'לא ניתן היה למחוק את סיסמת המשתמש.', false);
+            }
         }
 
         function backToUserSelection() {
@@ -1530,7 +1597,7 @@
 
                 users.forEach(u => {
                     if (u.name && !userMap.has(u.name)) {
-                        userMap.set(u.name, { userName: u.name, count: 0, months: [] });
+                        userMap.set(u.name, { id: u.id, userName: u.name, hasPassword: Boolean(u.hasPassword), count: 0, months: [] });
                     }
                 });
 
@@ -1552,12 +1619,15 @@
                         card.onclick = () => selectUserForMonthSelection(u.userName);
                         card.innerHTML = `
                             <div class="space-y-2">
-                                <div class="font-bold text-slate-900 dark:text-white text-base">${u.userName}</div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="font-bold text-slate-900 dark:text-white text-base">${u.userName}</div>
+                                    <button onclick="event.stopPropagation(); setUserPassword('${u.id}')" class="text-[10px] px-2 py-1 rounded-lg ${u.hasPassword ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}">${u.hasPassword ? 'נעול' : 'נעל בסיסמה'}</button>
+                                </div>
                                 <div class="text-[11px] text-slate-500 dark:text-slate-400">חישובים שמורים: <strong class="text-slate-800 dark:text-white">${u.count}</strong></div>
                                 <div class="text-[11px] text-slate-500 dark:text-slate-400">חודשים: ${monthsText || 'אין חודשים'}</div>
                             </div>
                             <div class="flex items-center justify-between border-t border-slate-200 dark:border-slate-700/60 pt-3 text-[10px] text-slate-400">
-                                <span>מסודר לפי א-ת</span>
+                                <span>${u.hasPassword ? 'נדרש קוד כניסה' : 'מסודר לפי א-ת'}</span>
                                 <span class="text-brand-600 dark:text-brand-400 font-bold flex items-center gap-0.5">בחר משתמש</span>
                             </div>
                         `;
@@ -1627,6 +1697,7 @@
                         <span class="font-bold text-slate-900 dark:text-white">${u.name}</span>
                         <span class="flex items-center gap-3">
                             <span class="text-slate-400">${count} חודשים</span>
+                            <button onclick="clearUserPassword('${u.id}')" class="text-amber-500 hover:text-amber-600 font-bold ${u.hasPassword ? '' : 'opacity-40'}">מחק סיסמה</button>
                             <button onclick="deleteAdminUser('${u.id}', '${String(u.name).replace(/'/g, "\\'")}')" class="text-rose-500 hover:text-rose-600 font-bold ${count > 0 ? 'opacity-40 cursor-not-allowed' : ''}">מחק</button>
                         </span>
                     `;
