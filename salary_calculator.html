@@ -837,7 +837,7 @@
 
     <!-- JavaScript Logic Section -->
     <script>
-        const APP_VERSION = 'pdf-import-open-v2';
+        const APP_VERSION = 'pdf-import-shifts-v3';
         console.log('Salary calculator version:', APP_VERSION);
         const STUB_DEFAULTS = {
             hourlyRate: 54.97, 
@@ -2070,7 +2070,9 @@
                 shifts.forEach(s => {
                     const hours = parseFloat(s.hours) || 0;
                     let desc = '';
-                    if (s.isShabbat) {
+                    if (s.type === 'completion' && s.importedTotals) {
+                        desc = `<span class="text-amber-600 dark:text-amber-400 font-bold">השלמות: רגיל ${Number(s.importedTotals.regularHours || 0).toFixed(2)} | 125% ${Number(s.importedTotals.ot125Hours || 0).toFixed(2)} | 150% ${Number(s.importedTotals.ot150Hours || 0).toFixed(2)} | שבת ${Number(s.importedTotals.shabbatHours || 0).toFixed(2)}</span>`;
+                    } else if (s.isShabbat) {
                         desc = `<span class="text-indigo-600 dark:text-indigo-400 font-bold">שבת: ${hours.toFixed(2)} ש' (150%)</span>`;
                     } else {
                         const r = Math.min(hours, 8).toFixed(2);
@@ -2091,6 +2093,7 @@
                                 <option value="noon" ${s.type === 'noon' ? 'selected' : ''} class="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">צהריים</option>
                                 <option value="night" ${s.type === 'night' ? 'selected' : ''} class="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">לילה</option>
                                 <option value="custom" ${s.type === 'custom' || !s.type ? 'selected' : ''} class="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">אחר/מותאם</option>
+                                <option value="completion" ${s.type === 'completion' ? 'selected' : ''} class="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">השלמות</option>
                             </select>
                         </td>
                         <td class="p-2">
@@ -2123,7 +2126,12 @@
 
             shifts.forEach(s => {
                 const hours = parseFloat(s.hours) || 0;
-                if (s.isShabbat) {
+                if (s.type === 'completion' && s.importedTotals) {
+                    regSum += parseFloat(s.importedTotals.regularHours) || 0;
+                    ot125Sum += parseFloat(s.importedTotals.ot125Hours) || 0;
+                    ot150Sum += parseFloat(s.importedTotals.ot150Hours) || 0;
+                    shabbatSum += parseFloat(s.importedTotals.shabbatHours) || 0;
+                } else if (s.isShabbat) {
                     shabbatSum += hours;
                 } else {
                     regSum += Math.min(hours, 8);
@@ -2189,7 +2197,7 @@
             
             const uniqueWorkingDays = new Set(shifts.map(s => s.date)).size;
             const dynamicTravelDaily = uniqueWorkingDays * travelDaily;
-            const importedTotals = activeProfile?.importedTotals && (!shifts || shifts.length === 0) ? activeProfile.importedTotals : null;
+            const importedTotals = activeProfile?.importedFromPdf && activeProfile?.importedTotals ? activeProfile.importedTotals : null;
             const travelPay = importedTotals ? (parseFloat(importedTotals.travelPay) || 0) : travelFixed + dynamicTravelDaily;
             
             let eligibleFoodHours = 0;

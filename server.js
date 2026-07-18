@@ -108,6 +108,54 @@ function findMonth(text) {
     }
     return new Date().toISOString().slice(0, 7);
 }
+function dateForShift(calculationMonth, index) {
+    const day = String((index % 28) + 1).padStart(2, '0');
+    return `${calculationMonth}-${day}`;
+}
+function buildImportedShifts(calculationMonth, totals) {
+    const shifts = [];
+    let regularLeft = Number(totals.regularHours || 0);
+    let ot125Left = Number(totals.ot125Hours || 0);
+    let ot150Left = Number(totals.ot150Hours || 0);
+    let shabbatLeft = Number(totals.shabbatHours || 0);
+    let index = 0;
+    while (ot150Left >= 2 && regularLeft >= 8 && ot125Left >= 2) {
+        shifts.push({ id: `pdf_shift_${Date.now()}_${index}`, date: dateForShift(calculationMonth, index), hours: 12, isShabbat: false, type: 'custom', importedPdfShift: true });
+        regularLeft -= 8;
+        ot125Left -= 2;
+        ot150Left -= 2;
+        index += 1;
+    }
+    while (regularLeft >= 8 && ot125Left >= 0.5) {
+        shifts.push({ id: `pdf_shift_${Date.now()}_${index}`, date: dateForShift(calculationMonth, index), hours: 8.5, isShabbat: false, type: 'custom', importedPdfShift: true });
+        regularLeft -= 8;
+        ot125Left -= 0.5;
+        index += 1;
+    }
+    while (shabbatLeft >= 12) {
+        shifts.push({ id: `pdf_shift_${Date.now()}_${index}`, date: dateForShift(calculationMonth, index), hours: 12, isShabbat: true, type: 'custom', importedPdfShift: true });
+        shabbatLeft -= 12;
+        index += 1;
+    }
+    if (regularLeft > 0 || ot125Left > 0 || ot150Left > 0 || shabbatLeft > 0) {
+        shifts.push({
+            id: `pdf_completion_${Date.now()}`,
+            date: dateForShift(calculationMonth, index),
+            hours: Number((regularLeft + ot125Left + ot150Left + shabbatLeft).toFixed(2)),
+            isShabbat: false,
+            type: 'completion',
+            label: 'השלמות',
+            importedPdfShift: true,
+            importedTotals: {
+                regularHours: Number(regularLeft.toFixed(2)),
+                ot125Hours: Number(ot125Left.toFixed(2)),
+                ot150Hours: Number(ot150Left.toFixed(2)),
+                shabbatHours: Number(shabbatLeft.toFixed(2))
+            }
+        });
+    }
+    return shifts;
+}
 function extractPayslipData(text, userName) {
     const normalized = normalizePayslipText(text);
     const calculationMonth = findMonth(normalized);
@@ -126,6 +174,15 @@ function extractPayslipData(text, userName) {
     const ot125Hours = numberFromText(normalized.match(/([\d,.]+)\s+125\.00\s+54\.97\s+ð"ù\s+125%/)?.[1]) || 0;
     const ot150Hours = numberFromText(normalized.match(/([\d,.]+)\s+150\.00\s+54\.97\s+ð"ù\s+150%/)?.[1]) || 0;
     const shabbatHours = numberFromText(normalized.match(/([\d,.]+)\s+150\.00\s+54\.97\s+úáù\.ù\s+150%/)?.[1]) || 0;
+    const importedTotals = {
+        regularHours,
+        ot125Hours,
+        ot150Hours,
+        shabbatHours,
+        travelPay: travelFixed + travelDaily,
+        foodPay: foodAllowance,
+        grossTotal
+    };
     return {
         name: `${userName} - ${calculationMonth}`,
         userName,
@@ -142,16 +199,8 @@ function extractPayslipData(text, userName) {
         kerenHishtalmutRate,
         hasDmiTipul: dmiTipulRate > 0,
         dmiTipulRate,
-        shifts: [],
-        importedTotals: {
-            regularHours,
-            ot125Hours,
-            ot150Hours,
-            shabbatHours,
-            travelPay: travelFixed + travelDaily,
-            foodPay: foodAllowance,
-            grossTotal
-        },
+        shifts: buildImportedShifts(calculationMonth, importedTotals),
+        importedTotals,
         importedFromPdf: true
     };
 }
