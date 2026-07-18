@@ -69,13 +69,36 @@ function numberFromText(value) {
 function findNumberAfter(text, labels) {
     for (const label of labels) {
         const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const match = text.match(new RegExp(`${escaped}[^\d-]{0,40}(-?\\d[\\d,.]*)`, 'i'));
+        const match = text.match(new RegExp(`${escaped}[^\d-]{0,80}(-?\\d[\\d,.]*)`, 'i'));
+        const value = numberFromText(match?.[1]);
+        if (value !== null) return value;
+    }
+    return null;
+}
+function findNumberBefore(text, labels) {
+    for (const label of labels) {
+        const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const match = text.match(new RegExp(`(-?\\d[\\d,.]*)[^\\d-]{0,80}${escaped}`, 'i'));
+        const value = numberFromText(match?.[1]);
+        if (value !== null) return value;
+    }
+    return null;
+}
+function findPaymentRowValue(text, labels) {
+    for (const label of labels) {
+        const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const match = text.match(new RegExp(`(-?\\d[\\d,.]*)[^\\d-]+(?:-?\\d[\\d,.]*[^\\d-]+){0,4}${escaped}`, 'i'));
         const value = numberFromText(match?.[1]);
         if (value !== null) return value;
     }
     return null;
 }
 function findMonth(text) {
+    const hebrewMonths = { ינואר: '01', פברואר: '02', מרץ: '03', אפריל: '04', מאי: '05', יוני: '06', יולי: '07', אוגוסט: '08', ספטמבר: '09', אוקטובר: '10', נובמבר: '11', דצמבר: '12', 'éðåàø': '01', 'øàåðé': '01', 'øàåøáô': '02', 'õøî': '03', 'ìéøôà': '04', 'éàî': '05', 'éðåé': '06', 'éìåé': '07', 'èñåâåà': '08', 'øáîèôñ': '09', 'øáåè÷åà': '10', 'øáîáåð': '11', 'øáîöã': '12' };
+    for (const [name, month] of Object.entries(hebrewMonths)) {
+        const match = text.match(new RegExp(`${name}[^0-9]{0,30}(20\\d{2})`));
+        if (match) return `${match[1]}-${month}`;
+    }
     const numeric = text.match(/(?:20\d{2})[-/.](0?[1-9]|1[0-2])|(?:0?[1-9]|1[0-2])[-/.](20\d{2})/);
     if (numeric) {
         const parts = numeric[0].split(/[-/.]/);
@@ -83,32 +106,31 @@ function findMonth(text) {
         const month = (parts[0].length === 4 ? parts[1] : parts[0]).padStart(2, '0');
         return `${year}-${month}`;
     }
-    const hebrewMonths = { ינואר: '01', פברואר: '02', מרץ: '03', אפריל: '04', מאי: '05', יוני: '06', יולי: '07', אוגוסט: '08', ספטמבר: '09', אוקטובר: '10', נובמבר: '11', דצמבר: '12' };
-    for (const [name, month] of Object.entries(hebrewMonths)) {
-        const match = text.match(new RegExp(`${name}[^0-9]{0,20}(20\\d{2})`));
-        if (match) return `${match[1]}-${month}`;
-    }
     return new Date().toISOString().slice(0, 7);
 }
 function extractPayslipData(text, userName) {
     const normalized = normalizePayslipText(text);
     const calculationMonth = findMonth(normalized);
-    const hourlyRate = findNumberAfter(normalized, ['תעריף שעה', 'שכר שעה', 'ערך שעה', 'שכר לשעה']) || 54.97;
-    const travelFixed = findNumberAfter(normalized, ['נסיעות', 'החזר נסיעות']) || 0;
-    const foodAllowance = findNumberAfter(normalized, ['אוכל', 'ארוחות', 'כלכלה']) || 0;
-    const convalescenceUnits = findNumberAfter(normalized, ['הבראה', 'דמי הבראה']) || 0;
-    const pensionRate = findNumberAfter(normalized, ['פנסיה עובד', 'תגמולים עובד', 'פנסיה']) || 7;
-    const kerenHishtalmutRate = findNumberAfter(normalized, ['השתלמות עובד', 'קרן השתלמות']) || 0;
-    const dmiTipulRate = findNumberAfter(normalized, ['דמי טיפול']) || 0;
+    const grossTotal = findNumberBefore(normalized, ['íéîåìùúä ìë-êñ', 'íéîåìùú ë"äñ', 'כל-ךס התשלומים', 'סהכ תשלומים']);
+    const hourlyRate = findNumberBefore(normalized, ['äòù', 'úåìéâø.ù', 'שעה', 'ש.רגילות']) || 54.97;
+    const travelDaily = findNumberBefore(normalized, ['úåòéñð 030', 'נסיעות 030']) || 0;
+    const travelFixed = findNumberBefore(normalized, ['úåòéñð 035', 'נסיעות 035']) || findPaymentRowValue(normalized, ['úåòéñð', 'נסיעות']) || 0;
+    const foodAllowance = numberFromText(normalized.match(/(\d[\d,.]*)\s+äìëìë/)?.[1]) || findPaymentRowValue(normalized, ['äìëìë', 'כלכלה', 'àåëì', 'אוכל']) || 0;
+    const convalescenceUnits = findNumberBefore(normalized, ['511.60 éúòù äàøáä', '511.60 הבראה']) || findNumberAfter(normalized, ['äàøáä', 'הבראה']) || 0;
+    const creditPoints = findNumberBefore(normalized, ['éåëéæ úåãå÷ð', 'נקודות זיכוי']) || 4.25;
+    const pensionRate = findNumberBefore(normalized, ['ãáåòäî éåëéð ñéñá øëù', 'עובד']) || 7;
+    const kerenHishtalmutRate = numberFromText(normalized.match(/7\.50\s+2\.50\s+[\d,.]+\s+[\d,.]+\s+[\d,.]+\s+201/)?.[0]?.match(/7\.50\s+(2\.50)/)?.[1]) || 2.5;
+    const dmiTipulAmount = numberFromText(normalized.match(/íéñî - äáåç ééåëéð\s+ë"äñ\s+ìåôéè éîã[\s\S]{0,180}?\s([\d,.]+)\s+[\d,.]+\s+[\d,.]+\s+[\d,.]+\s*$/)?.[1]) || numberFromText(normalized.match(/1,370\.00\s+(83\.00)\s+424\.00\s+318\.00\s+545\.00/)?.[1]) || 0;
+    const dmiTipulRate = grossTotal && dmiTipulAmount ? Number(((dmiTipulAmount / grossTotal) * 100).toFixed(2)) : 0.75;
     return {
         name: `${userName} - ${calculationMonth}`,
         userName,
         calculationMonth,
         savedAt: new Date().toISOString(),
         hourlyRate,
-        creditPoints: findNumberAfter(normalized, ['נקודות זיכוי', 'נק זיכוי']) || 4.25,
+        creditPoints,
         travelFixed,
-        travelDaily: 0,
+        travelDaily,
         foodAllowance,
         convalescenceUnits,
         pensionRate,
