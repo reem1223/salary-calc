@@ -837,6 +837,8 @@
 
     <!-- JavaScript Logic Section -->
     <script>
+        const APP_VERSION = 'pdf-import-open-v2';
+        console.log('Salary calculator version:', APP_VERSION);
         const STUB_DEFAULTS = {
             hourlyRate: 54.97, 
             regularHours: 0,
@@ -1503,7 +1505,9 @@
                 if (existing && !confirm('כבר קיים חישוב לחודש הזה. ליצור חישוב נוסף בכל זאת?')) return;
                 await createOrUpdateProfile(profileData);
                 selectedUserNameForSelection = profileData.userName;
-                showCustomAlert('הצלחה', 'ה-PDF נקרא והחישוב נשמר. בדוק את הערכים וערוך במידת הצורך.');
+                const importedProfile = profiles.find(p => getProfileUserName(p) === profileData.userName && (p.calculationMonth || inferMonthFromShifts(p.shifts)) === profileData.calculationMonth && p.importedFromPdf) || profiles.find(p => getProfileUserName(p) === profileData.userName && (p.calculationMonth || inferMonthFromShifts(p.shifts)) === profileData.calculationMonth);
+                if (importedProfile?.id) selectProfile(importedProfile.id);
+                showCustomAlert('הצלחה', 'ה-PDF נקרא והחישוב נשמר ונפתח במחשבון.');
             } catch (e) {
                 showCustomAlert('שגיאה', 'לא ניתן היה לקרוא את ה-PDF. בדוק שהסיסמה נכונה ושהקובץ הוא תלוש תקין.', false);
             }
