@@ -26,6 +26,19 @@ function useDatabase() {
 function databaseUnavailable(res) {
     return res.status(503).json({ error: "Database is configured but not available", detail: databaseInitError });
 }
+function isSeedProfile(profile) {
+    return ['profile_june_2026', 'profile_feb_2026', 'profile_empty'].includes(profile.id)
+        || ['מזרחי ראם - יוני 2026 (בסיס 54.97)', 'מזרחי ראם - פברואר 2026 (בסיס 53.22)', 'סימולטור נקי (משמרות ריקות)'].includes(profile.name);
+}
+function isSeedUser(user) {
+    return ['מזרחי ראם', 'משתמש חדש'].includes(user.name);
+}
+function cleanProfiles(profiles) {
+    return Array.isArray(profiles) ? profiles.filter(profile => !isSeedProfile(profile)) : [];
+}
+function cleanUsers(users) {
+    return Array.isArray(users) ? users.filter(user => !isSeedUser(user)) : [];
+}
 
 app.use(cors());
 app.use(express.json());
@@ -60,7 +73,9 @@ function readProfiles() {
             return [];
         }
         const data = fs.readFileSync(DATA_FILE, 'utf8');
-        return JSON.parse(data);
+        const profiles = cleanProfiles(JSON.parse(data));
+        writeProfiles(profiles);
+        return profiles;
     } catch (e) {
         console.error("Error reading database file:", e);
         return [];
@@ -112,7 +127,9 @@ function readUsers() {
         writeJsonFile(USERS_FILE, initialUsers);
         return initialUsers;
     }
-    return readJsonFile(USERS_FILE, []);
+    const users = cleanUsers(readJsonFile(USERS_FILE, []));
+    writeUsers(users);
+    return users;
 }
 
 function writeUsers(users) {
@@ -153,6 +170,9 @@ async function initDatabase() {
         );
     `);
 
+    await pool.query("DELETE FROM calculations WHERE id IN ('profile_june_2026', 'profile_feb_2026', 'profile_empty') OR name IN ('מזרחי ראם - יוני 2026 (בסיס 54.97)', 'מזרחי ראם - פברואר 2026 (בסיס 53.22)', 'סימולטור נקי (משמרות ריקות)')");
+    await pool.query("DELETE FROM users WHERE name IN ('מזרחי ראם', 'משתמש חדש')");
+
     const userCount = await pool.query('SELECT COUNT(*)::int AS count FROM users');
     if (userCount.rows[0].count === 0) {
         for (const user of readUsers()) {
@@ -188,12 +208,12 @@ function rowToProfile(row) {
 
 async function dbReadUsers() {
     const result = await pool.query('SELECT id, name, created_at AS "createdAt" FROM users ORDER BY name ASC');
-    return result.rows;
+    return cleanUsers(result.rows);
 }
 
 async function dbReadProfiles() {
     const result = await pool.query('SELECT * FROM calculations ORDER BY user_name ASC, calculation_month DESC');
-    return result.rows.map(rowToProfile);
+    return cleanProfiles(result.rows.map(rowToProfile));
 }
 
 async function dbReadDeletedProfiles() {

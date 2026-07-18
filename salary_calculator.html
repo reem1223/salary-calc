@@ -1010,6 +1010,7 @@
                 const response = await fetchWithTimeout(`${API_BASE_URL}/api/profiles`, { timeout: 4000 });
                 if (!response.ok) throw new Error("API error");
                 profiles = await response.json();
+                profiles = profiles.filter(p => !isSeedProfile(p));
                 isServerOnline = true;
                 await fetchUsers();
                 await fetchDeletedProfiles();
@@ -1034,6 +1035,7 @@
                 const response = await fetchWithTimeout(`${API_BASE_URL}/api/users`, { timeout: 4000 });
                 if (!response.ok) throw new Error("Could not fetch users");
                 users = await response.json();
+                users = users.filter(u => !isSeedUser(u));
                 localStorage.setItem('salary_calculator_local_users', JSON.stringify(users));
             } catch (e) {
                 loadUsersFromCache();
@@ -1055,13 +1057,29 @@
             renderDeletedProfilesTable();
         }
 
+        function isSeedProfile(profile) {
+            return ['profile_june_2026', 'profile_feb_2026', 'profile_empty'].includes(profile?.id)
+                || ['מזרחי ראם - יוני 2026 (בסיס 54.97)', 'מזרחי ראם - פברואר 2026 (בסיס 53.22)', 'סימולטור נקי (משמרות ריקות)'].includes(profile?.name);
+        }
+
+        function isSeedUser(user) {
+            return ['מזרחי ראם', 'משתמש חדש'].includes(user?.name);
+        }
+
+        function cleanSeedData() {
+            profiles = Array.isArray(profiles) ? profiles.filter(p => !isSeedProfile(p)) : [];
+            users = Array.isArray(users) ? users.filter(u => !isSeedUser(u)) : [];
+        }
+
         function syncUsersFromProfiles() {
             if (!Array.isArray(users)) users = [];
+            cleanSeedData();
         }
 
         function loadUsersFromCache() {
             const raw = localStorage.getItem('salary_calculator_local_users');
-            users = raw ? JSON.parse(raw) : [];
+            users = raw ? JSON.parse(raw).filter(u => !isSeedUser(u)) : [];
+            saveUsersToCache();
         }
 
         function saveUsersToCache() {
@@ -1072,7 +1090,8 @@
             const raw = localStorage.getItem('salary_calculator_local_profiles');
             loadUsersFromCache();
             if (raw) {
-                profiles = JSON.parse(raw);
+                profiles = JSON.parse(raw).filter(p => !isSeedProfile(p));
+                saveProfilesToCache();
             } else {
                 profiles = [];
             }
