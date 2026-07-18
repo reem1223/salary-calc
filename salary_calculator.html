@@ -840,7 +840,7 @@
 
     <!-- JavaScript Logic Section -->
     <script>
-        const APP_VERSION = 'pdf-shifts-note-v6';
+        const APP_VERSION = 'restore-expiry-v7';
         console.log('Salary calculator version:', APP_VERSION);
         const STUB_DEFAULTS = {
             hourlyRate: 54.97, 
@@ -1388,12 +1388,12 @@
         }
 
         async function deleteProfileConfirm(id) {
-            if (confirm("האם אתה בטוח שברצונך למחוק את החישוב הזה? ניתן יהיה לשחזר אותו דרך האדמין.")) {
+            if (confirm("האם אתה בטוח שברצונך למחוק את החישוב הזה? ניתן יהיה לשחזר אותו דרך האדמין למשך 7 ימים בלבד, ולאחר מכן הוא יימחק לצמיתות.")) {
                 if (activeProfile && activeProfile.id === id) {
                     activeProfile = null;
                 }
                 await apiDeleteProfile(id);
-                showCustomAlert("מחיקה", "החישוב נמחק ונשמר בגיבוי לשחזור.");
+                showCustomAlert("מחיקה", "החישוב נמחק ונשמר בגיבוי לשחזור למשך 7 ימים בלבד. לאחר מכן הוא יימחק לצמיתות.");
             }
         }
 
@@ -1759,17 +1759,19 @@
             if (!tbody) return;
             tbody.innerHTML = '';
             if (!Array.isArray(deletedProfiles) || deletedProfiles.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400">אין חישובים מחוקים לשחזור.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400">אין חישובים מחוקים לשחזור. חישובים מחוקים נמחקים לצמיתות אחרי 7 ימים.</td></tr>';
                 return;
             }
             deletedProfiles.slice().reverse().forEach(item => {
                 const p = item.profile || {};
                 const row = document.createElement('tr');
                 row.className = "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-b border-slate-100 dark:border-slate-800/50";
+                const deletedAt = item.deletedAt ? new Date(item.deletedAt) : null;
+                const expiresAt = deletedAt ? new Date(deletedAt.getTime() + (7 * 24 * 60 * 60 * 1000)) : null;
                 row.innerHTML = `
                     <td class="p-3 font-semibold text-slate-900 dark:text-white text-xs">${p.userName || p.name || ''}</td>
                     <td class="p-3 text-xs font-mono text-slate-700 dark:text-slate-300">${p.calculationMonth || inferMonthFromShifts(p.shifts) || ''}</td>
-                    <td class="p-3 text-xs font-mono text-slate-700 dark:text-slate-300">${item.deletedAt ? new Date(item.deletedAt).toLocaleString('he-IL') : ''}</td>
+                    <td class="p-3 text-xs font-mono text-slate-700 dark:text-slate-300">${deletedAt ? deletedAt.toLocaleString('he-IL') : ''}<div class="mt-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold">יימחק לצמיתות אחרי 7 ימים${expiresAt ? ` (${expiresAt.toLocaleDateString('he-IL')})` : ''}</div></td>
                     <td class="p-3 text-center"><button onclick="restoreDeletedProfile('${item.id}')" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-bold">שחזר</button></td>
                 `;
                 tbody.appendChild(row);

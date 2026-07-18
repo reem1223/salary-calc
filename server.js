@@ -17,6 +17,8 @@ const DELETED_PROFILES_FILE = path.join(DATA_DIR, 'deleted_calculations.json');
 const LEGACY_PROFILES_FILE = path.join(__dirname, 'profiles.json');
 const LEGACY_USERS_FILE = path.join(__dirname, 'users.json');
 const LEGACY_DELETED_PROFILES_FILE = path.join(__dirname, 'deleted_profiles.json');
+const DELETED_PROFILE_RETENTION_DAYS = 7;
+const DELETED_PROFILE_RETENTION_MS = DELETED_PROFILE_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 const pool = process.env.DATABASE_URL ? new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -340,6 +342,21 @@ function readDeletedProfiles() {
     return readJsonFile(DELETED_PROFILES_FILE, []);
 }
 
+function pruneExpiredDeletedProfiles(items) {
+    const cutoff = Date.now() - DELETED_PROFILE_RETENTION_MS;
+    return Array.isArray(items) ? items.filter(item => {
+        const deletedTime = new Date(item.deletedAt || item.deleted_at || 0).getTime();
+        return Number.isFinite(deletedTime) && deletedTime >= cutoff;
+    }) : [];
+}
+
+function readActiveDeletedProfiles() {
+    const deleted = readDeletedProfiles();
+    const active = pruneExpiredDeletedProfiles(deleted);
+    if (active.length !== deleted.length) writeDeletedProfiles(active);
+    return active;
+}
+
 function writeDeletedProfiles(items) {
     return writeJsonFile(DELETED_PROFILES_FILE, items);
 }
@@ -415,7 +432,11 @@ async function dbReadProfiles() {
     return cleanProfiles(result.rows.map(rowToProfile));
 }
 
+async function dbPruneExpiredDeletedProfiles() {
+    await pool.query("DELETE FROM deleted_calculations WHERE deleted_at < NOW() - INTERVAL '7 days'");
+}
 async function dbReadDeletedProfiles() {
+    await dbPruneExpiredDeletedProfiles();
     const result = await pool.query('SELECT id, deleted_at, data FROM deleted_calculations ORDER BY deleted_at DESC');
     return result.rows.map(row => ({ id: row.id, deletedAt: row.deleted_at, profile: row.data }));
 }
@@ -555,7 +576,7 @@ app.get('/api/deleted-profiles', async (req, res) => {
     try {
         if (useDatabase()) return res.json(await dbReadDeletedProfiles());
         if (pool) return databaseUnavailable(res);
-        res.json(readDeletedProfiles());
+        res.json(readActiveDeletedProfiles());
     } catch (e) {
         res.status(500).json({ error: "Could not read deleted calculations" });
     }
@@ -564,6 +585,7 @@ app.get('/api/deleted-profiles', async (req, res) => {
 app.post('/api/deleted-profiles/:id/restore', async (req, res) => {
     try {
         if (useDatabase()) {
+            await dbPruneExpiredDeletedProfiles();
             const found = await pool.query('SELECT id, data FROM deleted_calculations WHERE id = $1', [req.params.id]);
             if (!found.rows[0]) return res.status(404).json({ error: "Backup not found" });
             const restored = { ...found.rows[0].data, restoredAt: new Date().toISOString() };
@@ -574,7 +596,7 @@ app.post('/api/deleted-profiles/:id/restore', async (req, res) => {
             return res.json(restored);
         }
         if (pool) return databaseUnavailable(res);
-        const deleted = readDeletedProfiles();
+        const deleted = readActiveDeletedProfiles();
         const index = deleted.findIndex(item => item.id === req.params.id);
         if (index === -1) return res.status(404).json({ error: "Backup not found" });
         const restored = { ...deleted[index].profile, restoredAt: new Date().toISOString() };
@@ -697,7 +719,7 @@ app.delete('/api/profiles/:id', async (req, res) => {
             await pool.query('INSERT INTO deleted_calculations (id, data) VALUES ($1, $2)', [deletedId, deletedProfile]);
             await pool.query('DELETE FROM calculations WHERE id = $1', [req.params.id]);
         } else {
-            const deleted = readDeletedProfiles();
+            const deleted = readActiveDeletedProfiles();
             deleted.push({
                 id: deletedId,
                 deletedAt: new Date().toISOString(),
