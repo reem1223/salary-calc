@@ -1074,27 +1074,7 @@
             if (raw) {
                 profiles = JSON.parse(raw);
             } else {
-                profiles = [
-                    {
-                        id: "profile_june_2026",
-                        name: "מזרחי ראם - יוני 2026 (בסיס 54.97)",
-                        userName: "מזרחי ראם",
-                        calculationMonth: "2026-06",
-                        hourlyRate: 54.97,
-                        creditPoints: 4.25,
-                        travelFixed: 272.00,
-                        travelDaily: 11.30,
-                        foodAllowance: 4.00,
-                        convalescenceUnits: 0.41,
-                        pensionRate: 7.0,
-                        hasKerenHishtalmut: true,
-                        kerenHishtalmutRate: 2.5,
-                        hasDmiTipul: true,
-                        dmiTipulRate: 0.75,
-                        shifts: []
-                    }
-                ];
-                saveProfilesToCache();
+                profiles = [];
             }
         }
 

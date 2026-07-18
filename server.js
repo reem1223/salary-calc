@@ -19,8 +19,12 @@ const pool = process.env.DATABASE_URL ? new Pool({
     ssl: { rejectUnauthorized: false }
 }) : null;
 let databaseReady = false;
+let databaseInitError = null;
 function useDatabase() {
     return Boolean(pool && databaseReady);
+}
+function databaseUnavailable(res) {
+    return res.status(503).json({ error: "Database is configured but not available", detail: databaseInitError });
 }
 
 app.use(cors());
@@ -36,6 +40,15 @@ app.get('/salary_calculator.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'salary_calculator.html'));
 });
 
+app.get('/api/health', (req, res) => {
+    res.json({
+        ok: !pool || databaseReady,
+        databaseConfigured: Boolean(pool),
+        databaseReady,
+        databaseError: databaseInitError
+    });
+});
+
 // Helper function to read profiles from file
 function readProfiles() {
     try {
@@ -43,88 +56,8 @@ function readProfiles() {
             fs.copyFileSync(LEGACY_PROFILES_FILE, DATA_FILE);
         }
         if (!fs.existsSync(DATA_FILE)) {
-            // Write defaults based on your real pay stubs if no file exists yet
-            const defaultProfiles = [
-                {
-                    id: "profile_june_2026",
-                    name: "מזרחי ראם - יוני 2026 (בסיס 54.97)",
-                    userName: "מזרחי ראם",
-                    calculationMonth: "2026-06",
-                    hourlyRate: 54.97,
-                    creditPoints: 4.25,
-                    travelFixed: 272.00,
-                    travelDaily: 11.30,
-                    foodAllowance: 4.00,
-                    convalescenceUnits: 0.41,
-                    pensionRate: 7.0,
-                    hasKerenHishtalmut: true,
-                    kerenHishtalmutRate: 2.5,
-                    hasDmiTipul: true,
-                    dmiTipulRate: 0.75,
-                    shifts: [
-                        { id: "s1", date: "2026-06-01", hours: 10, isShabbat: false, type: "custom" },
-                        { id: "s2", date: "2026-06-02", hours: 10, isShabbat: false, type: "custom" },
-                        { id: "s3", date: "2026-06-03", hours: 10, isShabbat: false, type: "custom" },
-                        { id: "s4", date: "2026-06-04", hours: 10, isShabbat: false, type: "custom" },
-                        { id: "s5", date: "2026-06-05", hours: 10, isShabbat: false, type: "custom" },
-                        { id: "s6", date: "2026-06-08", hours: 10, isShabbat: false, type: "custom" },
-                        { id: "s7", date: "2026-06-09", hours: 10, isShabbat: false, type: "custom" },
-                        { id: "s8", date: "2026-06-10", hours: 10, isShabbat: false, type: "custom" },
-                        { id: "s9", date: "2026-06-11", hours: 9, isShabbat: false, type: "custom" },
-                        { id: "s10", date: "2026-06-12", hours: 8.5, isShabbat: false, type: "custom" },
-                        { id: "s11", date: "2026-06-15", hours: 12.5, isShabbat: false, type: "custom" },
-                        { id: "s12", date: "2026-06-16", hours: 12.5, isShabbat: false, type: "custom" },
-                        { id: "s13", date: "2026-06-17", hours: 12, isShabbat: false, type: "custom" },
-                        { id: "s14", date: "2026-06-18", hours: 12, isShabbat: false, type: "custom" },
-                        { id: "s15", date: "2026-06-19", hours: 2.25, isShabbat: false, type: "custom" },
-                        { id: "s16", date: "2026-06-20", hours: 14.75, isShabbat: true, type: "custom" }
-                    ]
-                },
-                {
-                    id: "profile_feb_2026",
-                    name: "מזרחי ראם - פברואר 2026 (בסיס 53.22)",
-                    userName: "מזרחי ראם",
-                    calculationMonth: "2026-02",
-                    hourlyRate: 53.22,
-                    creditPoints: 4.25,
-                    travelFixed: 323.00,
-                    travelDaily: 11.30,
-                    foodAllowance: 4.00,
-                    convalescenceUnits: 0.51,
-                    pensionRate: 7.0,
-                    hasKerenHishtalmut: true,
-                    kerenHishtalmutRate: 2.5,
-                    hasDmiTipul: true,
-                    dmiTipulRate: 0.75,
-                    shifts: [
-                        { id: "f1", date: "2026-02-01", hours: 12, isShabbat: false, type: "noon" },
-                        { id: "f2", date: "2026-02-02", hours: 12, isShabbat: false, type: "noon" },
-                        { id: "f3", date: "2026-02-03", hours: 12, isShabbat: false, type: "noon" },
-                        { id: "f4", date: "2026-02-04", hours: 12, isShabbat: false, type: "noon" },
-                        { id: "f5", date: "2026-02-05", hours: 12, isShabbat: false, type: "noon" }
-                    ]
-                },
-                {
-                    id: "profile_empty",
-                    name: "סימולטור נקי (משמרות ריקות)",
-                    userName: "משתמש חדש",
-                    calculationMonth: new Date().toISOString().slice(0, 7),
-                    hourlyRate: 54.97,
-                    creditPoints: 4.25,
-                    travelFixed: 272.00,
-                    travelDaily: 11.30,
-                    foodAllowance: 4.00,
-                    convalescenceUnits: 0.41,
-                    pensionRate: 7.0,
-                    hasKerenHishtalmut: true,
-                    kerenHishtalmutRate: 2.5,
-                    hasDmiTipul: true,
-                    dmiTipulRate: 0.75,
-                    shifts: []
-                }
-            ];
-            fs.writeFileSync(DATA_FILE, JSON.stringify(defaultProfiles, null, 4), 'utf8');
-            return defaultProfiles;
+            writeProfiles([]);
+            return [];
         }
         const data = fs.readFileSync(DATA_FILE, 'utf8');
         return JSON.parse(data);
@@ -285,6 +218,7 @@ async function dbSaveProfile(profile) {
 app.get('/api/users', async (req, res) => {
     try {
         if (useDatabase()) return res.json(await dbReadUsers());
+        if (pool) return databaseUnavailable(res);
         res.json(readUsers());
     } catch (e) {
         res.status(500).json({ error: "Could not read users" });
@@ -302,6 +236,7 @@ app.post('/api/users', async (req, res) => {
             const inserted = await pool.query('INSERT INTO users (id, name) VALUES ($1, $2) RETURNING id, name, created_at AS "createdAt"', [user.id, user.name]);
             return res.status(201).json(inserted.rows[0]);
         }
+        if (pool) return databaseUnavailable(res);
         const users = readUsers();
         const existing = users.find(u => u.name === name);
         if (existing) return res.json(existing);
@@ -325,6 +260,7 @@ app.delete('/api/users/:id', async (req, res) => {
             await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
             return res.json({ message: "User deleted successfully" });
         }
+        if (pool) return databaseUnavailable(res);
         const users = readUsers();
         const user = users.find(u => u.id === req.params.id);
         if (!user) return res.status(404).json({ error: "User not found" });
@@ -342,6 +278,7 @@ app.delete('/api/users/:id', async (req, res) => {
 app.get('/api/deleted-profiles', async (req, res) => {
     try {
         if (useDatabase()) return res.json(await dbReadDeletedProfiles());
+        if (pool) return databaseUnavailable(res);
         res.json(readDeletedProfiles());
     } catch (e) {
         res.status(500).json({ error: "Could not read deleted calculations" });
@@ -360,6 +297,7 @@ app.post('/api/deleted-profiles/:id/restore', async (req, res) => {
             await pool.query('DELETE FROM deleted_calculations WHERE id = $1', [req.params.id]);
             return res.json(restored);
         }
+        if (pool) return databaseUnavailable(res);
         const deleted = readDeletedProfiles();
         const index = deleted.findIndex(item => item.id === req.params.id);
         if (index === -1) return res.status(404).json({ error: "Backup not found" });
@@ -380,6 +318,7 @@ app.post('/api/deleted-profiles/:id/restore', async (req, res) => {
 app.get('/api/profiles', async (req, res) => {
     try {
         if (useDatabase()) return res.json(await dbReadProfiles());
+        if (pool) return databaseUnavailable(res);
         const profiles = readProfiles();
         res.json(profiles);
     } catch (e) {
@@ -389,6 +328,7 @@ app.get('/api/profiles', async (req, res) => {
 
 app.post('/api/profiles', async (req, res) => {
     try {
+        if (pool && !useDatabase()) return databaseUnavailable(res);
         const profiles = useDatabase() ? [] : readProfiles();
         const newProfile = {
         id: 'profile_' + Date.now(),
@@ -424,6 +364,7 @@ app.post('/api/profiles', async (req, res) => {
 
 app.put('/api/profiles/:id', async (req, res) => {
     try {
+        if (pool && !useDatabase()) return databaseUnavailable(res);
         const profiles = useDatabase() ? await dbReadProfiles() : readProfiles();
         const index = profiles.findIndex(p => p.id === req.params.id);
         if (index === -1) {
@@ -463,6 +404,7 @@ app.put('/api/profiles/:id', async (req, res) => {
 
 app.delete('/api/profiles/:id', async (req, res) => {
     try {
+        if (pool && !useDatabase()) return databaseUnavailable(res);
         let profiles = useDatabase() ? await dbReadProfiles() : readProfiles();
         const index = profiles.findIndex(p => p.id === req.params.id);
         if (index === -1) {
@@ -494,6 +436,7 @@ app.delete('/api/profiles/:id', async (req, res) => {
 initDatabase()
     .then(() => {
         databaseReady = Boolean(pool);
+        databaseInitError = null;
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
             console.log(databaseReady ? "Database persistence is enabled" : "Using local JSON persistence");
@@ -501,10 +444,11 @@ initDatabase()
     })
     .catch((e) => {
         databaseReady = false;
-        console.error("Database initialization failed. Starting with local JSON fallback.");
-        console.error(e.message || e);
+        databaseInitError = e.message || String(e);
+        console.error("Database initialization failed.");
+        console.error(databaseInitError);
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
-            console.log("Using local JSON persistence because database initialization failed");
+            console.log(pool ? "Database is configured but unavailable" : "Using local JSON persistence because database initialization failed");
         });
     });
