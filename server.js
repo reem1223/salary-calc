@@ -170,6 +170,9 @@ function extractPayslipData(text, userName) {
     const kerenHishtalmutRate = numberFromText(normalized.match(/7\.50\s+2\.50\s+[\d,.]+\s+[\d,.]+\s+[\d,.]+\s+201/)?.[0]?.match(/7\.50\s+(2\.50)/)?.[1]) || 2.5;
     const dmiTipulAmount = numberFromText(normalized.match(/íéñî - äáåç ééåëéð\s+ë"äñ\s+ìåôéè éîã[\s\S]{0,180}?\s([\d,.]+)\s+[\d,.]+\s+[\d,.]+\s+[\d,.]+\s*$/)?.[1]) || numberFromText(normalized.match(/1,370\.00\s+(83\.00)\s+424\.00\s+318\.00\s+545\.00/)?.[1]) || 0;
     const dmiTipulRate = grossTotal && dmiTipulAmount ? Number(((dmiTipulAmount / grossTotal) * 100).toFixed(2)) : 0.75;
+    const taxesTotal = findNumberBefore(normalized, ['íéñî-äáåç ééåëéð', 'ניכויי חובה-מסים']) || 0;
+    const socialTotal = findNumberBefore(normalized, ['ìîâ úåôå÷ éåëéð', 'ניכוי קופות גמל']) || 0;
+    const netPay = findNumberBefore(normalized, ['åèð øëù', 'שכר נטו']) || (grossTotal ? Number((grossTotal - taxesTotal - socialTotal).toFixed(2)) : 0);
     const regularHours = numberFromText(normalized.match(/([\d,.]+)\s+54\.97\s+úåìéâø\.ù/)?.[1]) || 0;
     const ot125Hours = numberFromText(normalized.match(/([\d,.]+)\s+125\.00\s+54\.97\s+ð"ù\s+125%/)?.[1]) || 0;
     const ot150Hours = numberFromText(normalized.match(/([\d,.]+)\s+150\.00\s+54\.97\s+ð"ù\s+150%/)?.[1]) || 0;
@@ -181,7 +184,10 @@ function extractPayslipData(text, userName) {
         shabbatHours,
         travelPay: travelFixed + travelDaily,
         foodPay: foodAllowance,
-        grossTotal
+        grossTotal,
+        taxesTotal,
+        socialTotal,
+        netPay
     };
     return {
         name: `${userName} - ${calculationMonth}`,

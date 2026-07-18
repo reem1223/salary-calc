@@ -837,7 +837,7 @@
 
     <!-- JavaScript Logic Section -->
     <script>
-        const APP_VERSION = 'pdf-import-shifts-v3';
+        const APP_VERSION = 'pdf-import-net-v4';
         console.log('Salary calculator version:', APP_VERSION);
         const STUB_DEFAULTS = {
             hourlyRate: 54.97, 
@@ -2227,10 +2227,11 @@
             const baseKerenHishtalmut = regularPay * 0.83673; 
             const kerenHishtalmutPay = hasKerenHishtalmut ? (baseKerenHishtalmut * kerenHishtalmutRate) : 0;
 
-            const socialTotal = pensionEmployee + kerenHishtalmutPay;
+            const importedSocialTotal = importedTotals?.socialTotal ? parseFloat(importedTotals.socialTotal) : null;
+            const socialTotal = importedSocialTotal ?? (pensionEmployee + kerenHishtalmutPay);
 
-            elements.outPensionEmployee.textContent = formatILS(pensionEmployee);
-            elements.outKerenHishtalmut.textContent = formatILS(kerenHishtalmutPay);
+            elements.outPensionEmployee.textContent = importedSocialTotal ? formatILS(socialTotal) : formatILS(pensionEmployee);
+            elements.outKerenHishtalmut.textContent = importedSocialTotal ? formatILS(0) : formatILS(kerenHishtalmutPay);
             elements.outSocialTotal.textContent = formatILS(socialTotal);
 
             const brackets = [
@@ -2294,19 +2295,20 @@
             }
 
             const dmiTipul = hasDmiTipul ? (grossTotal * dmiTipulRate) : 0;
-            const taxesTotal = finalIncomeTax + natIns + healthIns + dmiTipul;
+            const importedTaxesTotal = importedTotals?.taxesTotal ? parseFloat(importedTotals.taxesTotal) : null;
+            const taxesTotal = importedTaxesTotal ?? (finalIncomeTax + natIns + healthIns + dmiTipul);
 
             document.getElementById('outRawIncomeTax').textContent = formatILS(rawIncomeTax);
             document.getElementById('outCreditPointsDiscount').textContent = `-${formatILS(pointsValue)}`;
             document.getElementById('outSec45Discount').textContent = `-${formatILS(sec45Credit)}`;
 
-            elements.outIncomeTax.textContent = formatILS(finalIncomeTax);
-            elements.outNationalIns.textContent = formatILS(natIns);
-            elements.outHealthIns.textContent = formatILS(healthIns);
-            elements.outDmiTipul.textContent = formatILS(dmiTipul);
+            elements.outIncomeTax.textContent = importedTaxesTotal ? formatILS(taxesTotal) : formatILS(finalIncomeTax);
+            elements.outNationalIns.textContent = importedTaxesTotal ? formatILS(0) : formatILS(natIns);
+            elements.outHealthIns.textContent = importedTaxesTotal ? formatILS(0) : formatILS(healthIns);
+            elements.outDmiTipul.textContent = importedTaxesTotal ? formatILS(0) : formatILS(dmiTipul);
             elements.outTaxesTotal.textContent = formatILS(taxesTotal);
 
-            const netPay = Math.max(0, grossTotal - taxesTotal - socialTotal);
+            const netPay = importedTotals?.netPay ? parseFloat(importedTotals.netPay) : Math.max(0, grossTotal - taxesTotal - socialTotal);
             elements.netResult.textContent = formatILS(netPay);
 
             updateThemeAccent(netPay);
